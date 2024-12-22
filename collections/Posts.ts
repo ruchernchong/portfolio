@@ -19,6 +19,13 @@ const Posts: CollectionConfig = {
       name: "publishedAt",
       type: "date",
     },
+    {
+      name: "featuredImage",
+      type: "relationship",
+      relationTo: "media",
+      hasMany: true,
+      required: false,
+    },
   ],
 };
 
