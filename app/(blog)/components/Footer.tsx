@@ -4,7 +4,7 @@ import ExternalLink from "@/components/ExternalLink";
 import * as Icons from "@/components/Icons";
 import { BASE_URL, navLinks } from "@/config";
 import socials from "@/data/socials";
-import Icon from "@/app/icon.png";
+import Icon from "@/icon.png";
 
 export const Footer = () => {
   // Temporary removed links

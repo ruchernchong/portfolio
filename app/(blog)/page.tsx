@@ -3,7 +3,7 @@ import type { WebSite, WithContext } from "schema-dts";
 import { Author } from "@/components/Author";
 import BlogPost from "@/components/BlogPost";
 import FeaturedPosts from "@/components/FeaturedPosts";
-import { StructuredData } from "@/components/StructuredData";
+import { StructuredData } from "./components/StructuredData";
 import { sortByLatest } from "@/lib/sortByLatest";
 import { BASE_URL } from "@/config";
 

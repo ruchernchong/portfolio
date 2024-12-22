@@ -9,7 +9,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
 import { BASE_URL } from "@/config";
-import "@/app/globals.css";
+import "@/globals.css";
 
 const inter = Inter({ subsets: ["latin"] });
 

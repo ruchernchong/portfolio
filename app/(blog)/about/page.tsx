@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import globalMetadata from "@/app/metadata";
-import { openGraphImage, twitterImage } from "@/app/shared-metadata";
+import globalMetadata from "@/metadata";
+import { openGraphImage, twitterImage } from "@/shared-metadata";
 import { Author } from "@/components/Author";
 import Contributions from "@/components/Contributions";
 import Employment from "@/components/Employment";

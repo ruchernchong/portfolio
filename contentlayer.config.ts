@@ -1,6 +1,6 @@
 import { defineDocumentType, makeSource } from "contentlayer2/source-files";
 import type { BlogPosting, WithContext } from "schema-dts";
-import { BASE_URL } from "./config";
+import { BASE_URL } from "./app/(blog)/config";
 import readingTime from "reading-time";
 import remarkGfm from "remark-gfm";
 import rehypeSlug from "rehype-slug";

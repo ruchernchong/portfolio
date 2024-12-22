@@ -50,6 +50,9 @@ importers:
       classnames:
         specifier: ^2.3.2
         version: 2.5.1
+      config:
+        specifier: link:@/config
+        version: link:@/config
       contentlayer2:
         specifier: ^0.5.3
         version: 0.5.3(acorn@8.11.3)(esbuild@0.19.12)

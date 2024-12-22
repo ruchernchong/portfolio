@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import globalMetadata from "@/app/metadata";
-import { openGraphImage, twitterImage } from "@/app/shared-metadata";
+import globalMetadata from "@/metadata";
+import { openGraphImage, twitterImage } from "@/shared-metadata";
 import { Chip } from "@/components/Chip";
 import { ItemOverlay } from "@/components/ItemOverlay";
 import { LinkWithIcon } from "@/components/LinkWithIcon";
