@@ -1,4 +1,36 @@
-import type { CollectionConfig } from "payload";
+import readingTime from "reading-time";
+import type { CollectionBeforeValidateHook, CollectionConfig } from "payload";
+
+const beforeValidateHook: CollectionBeforeValidateHook = async ({ data }) => {
+  if (data) {
+    // Handle scheduled publishing
+    if (data.status === "scheduled" && data.scheduledPublishDate) {
+      const scheduledDate = new Date(data.scheduledPublishDate);
+
+      // If scheduled date is in the past or current, automatically publish
+      if (scheduledDate <= new Date()) {
+        data.status = "published";
+        data.publishedAt = scheduledDate.toISOString();
+      }
+    }
+
+    // Only set publishedAt for published status if not already set
+    if (data.status === "published" && !data.publishedAt) {
+      data.publishedAt = new Date().toISOString();
+    }
+
+    // Set publishedAt to null for non-published statuses
+    if (data.status !== "published") {
+      data.publishedAt = null;
+    }
+
+    if (data.content) {
+      data.readingTime = Math.ceil(readingTime(data.content).minutes);
+    }
+  }
+
+  return data;
+};
 
 const Posts: CollectionConfig = {
   slug: "posts",
@@ -16,8 +48,87 @@ const Posts: CollectionConfig = {
       type: "richText",
     },
     {
+      name: "excerpt",
+      type: "textarea",
+      label: "Excerpt/Summary",
+      admin: {
+        description:
+          "A brief summary of the post (recommended: 100-160 characters)",
+      },
+      validate: (value) => {
+        if (value && value.length > 250) {
+          return "Excerpt should be 250 characters or less";
+        }
+        return true;
+      },
+    },
+    {
+      name: "metaDescription",
+      type: "textarea",
+      label: "Meta Description",
+      admin: {
+        description:
+          "A brief summary for search engines (recommended: 150-160 characters)",
+      },
+      validate: (value) => {
+        if (value && value.length > 160) {
+          return "Meta description should be 160 characters or less";
+        }
+        return true;
+      },
+    },
+    {
+      name: "category",
+      type: "relationship",
+      relationTo: "categories", // You'll need to create a Categories collection
+      required: true,
+    },
+    {
+      name: "tags",
+      type: "relationship",
+      relationTo: "tags", // You'll need to create a Tags collection
+      hasMany: true,
+      required: false,
+    },
+    {
+      name: "readingTime",
+      type: "number",
+      admin: {
+        hidden: true,
+      },
+    },
+    {
+      name: "status",
+      type: "radio",
+      options: [
+        { label: "Draft", value: "draft" },
+        { label: "Published", value: "published" },
+        { label: "Scheduled", value: "scheduled" },
+      ],
+      defaultValue: "draft",
+      admin: {
+        layout: "horizontal",
+      },
+    },
+    {
+      name: "scheduledPublishDate",
+      type: "date",
+      label: "Scheduled Published Date",
+      admin: {
+        date: { pickerAppearance: "dayAndTime" },
+        condition: (data) => data.status === "scheduled",
+      },
+      required: false,
+    },
+    {
       name: "publishedAt",
       type: "date",
+      admin: {
+        date: {
+          pickerAppearance: "dayAndTime",
+        },
+        condition: (data) => data.status === "published",
+      },
     },
     {
       name: "featuredImage",
@@ -26,7 +137,19 @@ const Posts: CollectionConfig = {
       hasMany: true,
       required: false,
     },
+    {
+      name: "isFeatured",
+      type: "checkbox",
+      label: "Featured Post",
+      admin: {
+        description: "Mark this post as a featured post to highlight it",
+      },
+      defaultValue: false,
+    },
   ],
+  hooks: {
+    beforeValidate: [beforeValidateHook],
+  },
 };
 
 export default Posts;
