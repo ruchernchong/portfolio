@@ -16,7 +16,8 @@
     "incremental": true,
     "plugins": [{ "name": "next" }],
     "paths": {
-      "@/*": ["./*"],
+      "@/*": ["app/(blog)/*"],
+      "@payload-config": ["payload.config.ts"],
       "contentlayer/generated": ["./.contentlayer/generated"]
     },
     "verbatimModuleSyntax": true
