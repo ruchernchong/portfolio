@@ -1,28 +1,32 @@
 import readingTime from "reading-time";
-import type { CollectionBeforeValidateHook, CollectionConfig } from "payload";
+import {
+  type CollectionBeforeValidateHook,
+  type CollectionConfig,
+} from "payload";
+import slugify from "@sindresorhus/slugify";
 
 const beforeValidateHook: CollectionBeforeValidateHook = async ({ data }) => {
   if (data) {
-    // Handle scheduled publishing
-    if (data.status === "scheduled" && data.scheduledPublishDate) {
-      const scheduledDate = new Date(data.scheduledPublishDate);
-
-      // If scheduled date is in the past or current, automatically publish
-      if (scheduledDate <= new Date()) {
-        data.status = "published";
-        data.publishedAt = scheduledDate.toISOString();
-      }
+    if (data.title) {
+      data.slug = slugify(data.title);
     }
 
-    // Only set publishedAt for published status if not already set
-    if (data.status === "published" && !data.publishedAt) {
-      data.publishedAt = new Date().toISOString();
-    }
-
-    // Set publishedAt to null for non-published statuses
-    if (data.status !== "published") {
-      data.publishedAt = null;
-    }
+    // if (data.status === "scheduled" && data.scheduledPublishDate) {
+    //   const scheduledDate = new Date(data.scheduledPublishDate);
+    //
+    //   if (scheduledDate <= new Date()) {
+    //     data.status = "published";
+    //     data.publishedAt = scheduledDate.toISOString();
+    //   }
+    // }
+    //
+    // if (data.status === "published" && !data.publishedAt) {
+    //   data.publishedAt = new Date().toISOString();
+    // }
+    //
+    // if (data.status !== "published") {
+    //   data.publishedAt = null;
+    // }
 
     if (data.content) {
       data.readingTime = Math.ceil(readingTime(data.content).minutes);
@@ -36,12 +40,26 @@ const Posts: CollectionConfig = {
   slug: "posts",
   admin: {
     useAsTitle: "title",
+    defaultColumns: ["title", "slug"],
+  },
+  versions: {
+    drafts: {
+      autosave: true,
+    },
   },
   fields: [
     {
       name: "title",
       type: "text",
       required: true,
+    },
+    {
+      name: "slug",
+      type: "text",
+      unique: true,
+      admin: {
+        readOnly: true,
+      },
     },
     {
       name: "content",
@@ -97,19 +115,19 @@ const Posts: CollectionConfig = {
         hidden: true,
       },
     },
-    {
-      name: "status",
-      type: "radio",
-      options: [
-        { label: "Draft", value: "draft" },
-        { label: "Published", value: "published" },
-        { label: "Scheduled", value: "scheduled" },
-      ],
-      defaultValue: "draft",
-      admin: {
-        layout: "horizontal",
-      },
-    },
+    // {
+    //   name: "status",
+    //   type: "radio",
+    //   options: [
+    //     { label: "Draft", value: "draft" },
+    //     { label: "Published", value: "published" },
+    //     { label: "Scheduled", value: "scheduled" },
+    //   ],
+    //   defaultValue: "draft",
+    //   admin: {
+    //     layout: "horizontal",
+    //   },
+    // },
     {
       name: "scheduledPublishDate",
       type: "date",
@@ -127,7 +145,16 @@ const Posts: CollectionConfig = {
         date: {
           pickerAppearance: "dayAndTime",
         },
-        condition: (data) => data.status === "published",
+      },
+      hooks: {
+        beforeValidate: [
+          ({ value, operation }) => {
+            if (operation === "create") {
+              return new Date().toISOString();
+            }
+            return value;
+          },
+        ],
       },
     },
     {

@@ -16,6 +16,8 @@ import {
   InformationCircleIcon,
 } from "@heroicons/react/24/outline";
 import { truncate } from "@/utils/truncate";
+import { getPayload } from "payload";
+import config from "../../../../payload.config";
 
 type Params = Promise<{ slug: string }>;
 
@@ -23,7 +25,15 @@ export const generateMetadata = async (props: {
   params: Params;
 }): Promise<Metadata> => {
   const params = await props.params;
-  const post = ([] as any).find((post: any) => post.slug === params.slug)!;
+  const slug = params.slug;
+
+  const payload = await getPayload({ config });
+  const response = await payload.find({
+    collection: "posts",
+    draft: true,
+    where: { slug: { equals: slug } },
+  });
+  const post = response.docs[0];
 
   const title = post.title;
   const description = truncate(post.excerpt);
@@ -54,11 +64,28 @@ export const generateMetadata = async (props: {
   };
 };
 
-export const generateStaticParams = () => [].map(({ slug }) => ({ slug }));
+export const generateStaticParams = async () => {
+  const payload = await getPayload({ config });
+  const response = await payload.find({ collection: "posts", draft: true });
+  const posts = response.docs;
+
+  return posts.map(({ slug }) => ({ slug }));
+};
 
 const PostPage = async (props: { params: Params }) => {
   const params = await props.params;
-  const post = ([] as any).find((post: any) => post.slug === params.slug);
+  const slug = params.slug;
+
+  const payload = await getPayload({ config });
+  const response = await payload.find({
+    collection: "posts",
+    draft: false,
+    limit: 1,
+    where: { slug: { equals: slug } },
+  });
+  console.log(response);
+
+  const post = response.docs[0];
 
   if (!post) {
     return notFound();
@@ -79,7 +106,7 @@ const PostPage = async (props: { params: Params }) => {
 
   return (
     <>
-      <StructuredData data={post.structuredData} />
+      {/*<StructuredData data={post.structuredData} />*/}
       <article className="prose prose-invert mx-auto mb-16 max-w-4xl prose-a:text-pink-500 prose-img:rounded-2xl">
         <div className="flex flex-col items-center gap-y-4 text-center">
           <div className="flex flex-col gap-x-2 text-gray-400 md:flex-row">
