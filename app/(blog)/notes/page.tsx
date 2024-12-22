@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { allNotes } from "contentlayer/generated";
 import { format, formatISO, parseISO } from "date-fns";
 import globalMetadata from "@/metadata";
 import { openGraphImage, twitterImage } from "@/shared-metadata";
@@ -44,7 +43,7 @@ const NotesPage = () => {
     url: `${BASE_URL}/notes`,
   };
 
-  const sortedNotes = allNotes.sort(sortByLatest);
+  const sortedNotes = [].sort(sortByLatest);
 
   return (
     <>

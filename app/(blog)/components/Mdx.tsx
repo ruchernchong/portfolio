@@ -1,7 +1,6 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useMDXComponent } from "next-contentlayer2/hooks";
 import type { MDXComponents } from "mdx/types";
 import { ArrowUpRightIcon } from "@heroicons/react/16/solid";
 import { Typography } from "@/components/Typography";
@@ -94,12 +93,12 @@ const components: MDXComponents = {
   img: ImageComponent,
 };
 
-export const Mdx = ({ code }: { code: string }) => {
-  const Component = useMDXComponent(code);
-
-  return (
-    <div data-umami-event="mdx-content-view">
-      <Component components={components} />
-    </div>
-  );
-};
+// export const Mdx = ({ code }: { code: string }) => {
+//   const Component = useMDXComponent(code);
+//
+//   return (
+//     <div data-umami-event="mdx-content-view">
+//       <Component components={components} />
+//     </div>
+//   );
+// };

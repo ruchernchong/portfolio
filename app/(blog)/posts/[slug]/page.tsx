@@ -1,11 +1,10 @@
 import type { Metadata } from "next";
 // import Link from "next/link";
 import { notFound } from "next/navigation";
-import { allPosts } from "contentlayer/generated";
 // import classNames from "classnames";
 import { format, formatISO, parseISO } from "date-fns";
 // import Card from "@/components/Card";
-import { Mdx } from "@/components/Mdx";
+// import { Mdx } from "@/components/Mdx";
 import { StructuredData } from "@/components/StructuredData";
 import { Typography } from "@/components/Typography";
 import { ViewCounter } from "@/components/ViewCounter";
@@ -24,7 +23,7 @@ export const generateMetadata = async (props: {
   params: Params;
 }): Promise<Metadata> => {
   const params = await props.params;
-  const post = allPosts.find((post) => post.slug === params.slug)!;
+  const post = ([] as any).find((post: any) => post.slug === params.slug)!;
 
   const title = post.title;
   const description = truncate(post.excerpt);
@@ -55,12 +54,11 @@ export const generateMetadata = async (props: {
   };
 };
 
-export const generateStaticParams = () =>
-  allPosts.map(({ slug }) => ({ slug }));
+export const generateStaticParams = () => [].map(({ slug }) => ({ slug }));
 
 const PostPage = async (props: { params: Params }) => {
   const params = await props.params;
-  const post = allPosts.find((post) => post.slug === params.slug);
+  const post = ([] as any).find((post: any) => post.slug === params.slug);
 
   if (!post) {
     return notFound();
@@ -131,7 +129,7 @@ const PostPage = async (props: { params: Params }) => {
           data-umami-event="post-content-view"
           data-umami-event-slug={post.slug}
         >
-          <Mdx code={post.body.code} />
+          {/*<Mdx code={post.body.code} />*/}
         </div>
       </article>
       {/*<div className="mb-16 grid gap-y-4 md:grid-cols-2 md:gap-x-4">*/}

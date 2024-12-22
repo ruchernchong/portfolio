@@ -23,6 +23,4 @@
 *.tsbuildinfo
 next-env.d.ts
 
-# contentlayer
-.contentlayer
 .vercel

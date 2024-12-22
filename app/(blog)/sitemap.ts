@@ -1,5 +1,4 @@
 import type { MetadataRoute } from "next";
-import { allDocuments } from "contentlayer/generated";
 import { BASE_URL, navLinks } from "@/config";
 
 const sitemap = (): MetadataRoute.Sitemap => {
@@ -14,11 +13,11 @@ const sitemap = (): MetadataRoute.Sitemap => {
         url: `${BASE_URL}${href}`,
         lastModified: formatLastModified(),
       })),
-    ...allDocuments.map(({ publishedAt, url }) => ({
-      url: `${BASE_URL}${url}`,
-      lastModified: formatLastModified(publishedAt),
-      changeFrequency: "daily",
-    })),
+    // ...allDocuments.map(({ publishedAt, url }) => ({
+    //   url: `${BASE_URL}${url}`,
+    //   lastModified: formatLastModified(publishedAt),
+    //   changeFrequency: "daily",
+    // })),
   ];
 };
 

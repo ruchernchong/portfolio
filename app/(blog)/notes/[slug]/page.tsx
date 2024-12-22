@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { allNotes } from "contentlayer/generated";
-import { Mdx } from "@/components/Mdx";
+// import { Mdx } from "@/components/Mdx";
 import { StructuredData } from "@/components/StructuredData";
 import { Typography } from "@/components/Typography";
 import { BASE_URL } from "@/config";
@@ -12,7 +11,7 @@ export const generateMetadata = async (props: {
   params: Params;
 }): Promise<Metadata> => {
   const params = await props.params;
-  const note = allNotes.find((note) => note.slug === params.slug)!;
+  const note = ([] as any).find((note: any) => note.slug === params.slug)!;
 
   const title = note.title;
   const description = `Notes on ${note.title}`;
@@ -43,12 +42,11 @@ export const generateMetadata = async (props: {
   };
 };
 
-export const generateStaticParams = () =>
-  allNotes.map(({ slug }) => ({ slug }));
+export const generateStaticParams = () => [].map(({ slug }) => ({ slug }));
 
 const NotePage = async (props: { params: Params }) => {
   const params = await props.params;
-  const note = allNotes.find((note) => note.slug === params.slug);
+  const note = ([] as any).find((note: any) => note.slug === params.slug);
 
   if (!note) {
     return notFound();
@@ -76,7 +74,7 @@ const NotePage = async (props: { params: Params }) => {
           data-umami-event="note-content-view"
           data-umami-event-title={note.title}
         >
-          <Mdx code={note.body.code} />
+          {/*<Mdx code={note.body.code} />*/}
         </div>
       </article>
     </>

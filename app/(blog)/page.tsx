@@ -1,4 +1,3 @@
-import { allPosts } from "contentlayer/generated";
 import type { WebSite, WithContext } from "schema-dts";
 import { Author } from "@/components/Author";
 import BlogPost from "@/components/BlogPost";
@@ -8,7 +7,7 @@ import { sortByLatest } from "@/lib/sortByLatest";
 import { BASE_URL } from "@/config";
 
 const HomePage = async () => {
-  const posts = allPosts.sort(sortByLatest);
+  const posts = [].sort(sortByLatest);
   const featuredPosts = posts.filter(({ featured }) => featured);
 
   const structuredData: WithContext<WebSite> = {
