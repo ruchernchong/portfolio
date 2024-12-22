@@ -8,7 +8,9 @@ export default buildConfig({
   collections: [],
   secret: process.env.PAYLOAD_SECRET || "",
   db: postgresAdapter({
-    url: process.env.DATABASE_URI || "",
+    pool: {
+      connectionString: process.env.DATABASE_URL,
+    },
   }),
   sharp,
 });
