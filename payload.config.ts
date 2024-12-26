@@ -11,6 +11,7 @@ import Experiences from "./collections/Experiences";
 import Education from "./collections/Education";
 import { s3Storage } from "@payloadcms/storage-s3";
 import Users from "./collections/Users";
+import SocialMedia from "./collections/SocialMedia";
 
 export default buildConfig({
   editor: lexicalEditor(),
@@ -22,6 +23,7 @@ export default buildConfig({
     Showcase,
     Experiences,
     Education,
+    SocialMedia,
     Users,
   ],
   plugins: [
