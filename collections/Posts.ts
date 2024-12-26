@@ -1,13 +1,21 @@
 import readingTime from "reading-time";
 import {
+  type CollectionBeforeChangeHook,
   type CollectionBeforeValidateHook,
   type CollectionConfig,
-  type CollectionBeforeChangeHook,
 } from "payload";
 import slugify from "@sindresorhus/slugify";
 
-const beforeValidateHook: CollectionBeforeValidateHook = async ({ data }) => {
+const beforeValidateHook: CollectionBeforeValidateHook = async ({
+  req,
+  data,
+}) => {
   if (data) {
+    if (req.user) {
+      const user = req.user;
+      data.author = `${user.firstName} ${user.lastName}`;
+    }
+
     if (data.title) {
       data.slug = slugify(data.title);
     }
@@ -39,22 +47,22 @@ const beforeValidateHook: CollectionBeforeValidateHook = async ({ data }) => {
 
 const beforeChangeHook: CollectionBeforeChangeHook = async ({ data }) => {
   if (data) {
-    // Generate or update SEO metadata
+    // Generate SEO metadata
     if (data.title) {
-      data.seoTitle = data.seoTitle || data.title;
-      data.metaDescription = data.metaDescription || data.excerpt;
-      data.metaKeywords = data.metaKeywords || data.tags?.join(", ");
+      data.seoTitle = data.title;
+      data.metaDescription = data.excerpt || data.content?.substring(0, 160);
+      data.metaKeywords = data.tags?.join(", ");
     }
 
-    // Generate or update OpenGraph metadata
+    // Generate OpenGraph metadata
     if (data.featuredImage) {
       data.ogImage = data.featuredImage;
     }
 
-    // Generate or update Structured Data
+    // Generate Structured Data
     if (data.title && data.content) {
-      data.articleSection = data.articleSection || data.category;
-      data.articleBody = data.articleBody || data.content;
+      data.articleSection = data.category;
+      data.articleBody = data.content;
     }
   }
 
@@ -156,19 +164,6 @@ const Posts: CollectionConfig = {
         hidden: true,
       },
     },
-    // {
-    //   name: "status",
-    //   type: "radio",
-    //   options: [
-    //     { label: "Draft", value: "draft" },
-    //     { label: "Published", value: "published" },
-    //     { label: "Scheduled", value: "scheduled" },
-    //   ],
-    //   defaultValue: "draft",
-    //   admin: {
-    //     layout: "horizontal",
-    //   },
-    // },
     {
       name: "scheduledPublishDate",
       type: "date",
@@ -248,10 +243,10 @@ const Posts: CollectionConfig = {
     },
     {
       name: "author",
-      type: "relationship",
-      relationTo: "users", // Assuming you have a Users collection
+      type: "text",
       label: "Author",
       admin: {
+        hidden: true,
         description: "The author of the article",
       },
     },

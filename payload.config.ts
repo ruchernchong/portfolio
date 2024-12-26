@@ -10,6 +10,7 @@ import Showcase from "./collections/Showcase";
 import Experiences from "./collections/Experiences";
 import Education from "./collections/Education";
 import { s3Storage } from "@payloadcms/storage-s3";
+import Users from "./collections/Users";
 
 export default buildConfig({
   editor: lexicalEditor(),
@@ -21,6 +22,7 @@ export default buildConfig({
     Showcase,
     Experiences,
     Education,
+    Users,
   ],
   plugins: [
     s3Storage({
