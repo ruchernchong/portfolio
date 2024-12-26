@@ -2,15 +2,26 @@ import { lexicalEditor } from "@payloadcms/richtext-lexical";
 import { postgresAdapter } from "@payloadcms/db-postgres";
 import { buildConfig } from "payload";
 import sharp from "sharp";
-import Posts from "./collections/Posts";
-import { s3Storage } from "@payloadcms/storage-s3";
 import Media from "./collections/Media";
 import Categories from "./collections/Categories";
+import Posts from "./collections/Posts";
 import Tags from "./collections/Tags";
+import Showcase from "./collections/Showcase";
+import Experiences from "./collections/Experiences";
+import Education from "./collections/Education";
+import { s3Storage } from "@payloadcms/storage-s3";
 
 export default buildConfig({
   editor: lexicalEditor(),
-  collections: [Categories, Media, Posts, Tags],
+  collections: [
+    Categories,
+    Media,
+    Posts,
+    Tags,
+    Showcase,
+    Experiences,
+    Education,
+  ],
   plugins: [
     s3Storage({
       collections: {
