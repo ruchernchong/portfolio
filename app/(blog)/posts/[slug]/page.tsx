@@ -83,7 +83,6 @@ const PostPage = async (props: { params: Params }) => {
     limit: 1,
     where: { slug: { equals: slug } },
   });
-  console.log(response);
 
   const post = response.docs[0];
 
