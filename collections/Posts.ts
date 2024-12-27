@@ -32,14 +32,6 @@ const beforeValidateHook: CollectionBeforeValidateHook = async ({
     //     data.publishedAt = scheduledDate.toISOString();
     //   }
     // }
-    //
-    // if (data.status === "published" && !data.publishedAt) {
-    //   data.publishedAt = new Date().toISOString();
-    // }
-    //
-    // if (data.status !== "published") {
-    //   data.publishedAt = null;
-    // }
 
     if (data.content) {
       data.readingTime = Math.ceil(readingTime(data.content).minutes);
@@ -63,7 +55,7 @@ const beforeValidateHook: CollectionBeforeValidateHook = async ({
         // Basic OpenGraph properties
         "og:title": data.title,
         "og:type": "article",
-        "og:description": data.exerpt ?? data.content.subString(0, 160),
+        "og:description": data.excerpt ?? data.content.subString(0, 160),
         "og:url": data.url,
         "og:image": data.featuredImage,
         "og:locale": "en_SG",
@@ -173,12 +165,8 @@ const Posts: CollectionConfig = {
     },
     {
       name: "publishedAt",
-      type: "date",
-      admin: {
-        date: {
-          pickerAppearance: "dayAndTime",
-        },
-      },
+      type: "text",
+      admin: { readOnly: true },
       hooks: {
         beforeValidate: [
           ({ value, operation }) => {
