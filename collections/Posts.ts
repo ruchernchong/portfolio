@@ -1,6 +1,5 @@
 import readingTime from "reading-time";
 import {
-  type CollectionBeforeChangeHook,
   type CollectionBeforeValidateHook,
   type CollectionConfig,
 } from "payload";
@@ -40,13 +39,7 @@ const beforeValidateHook: CollectionBeforeValidateHook = async ({
     if (data.content) {
       data.readingTime = Math.ceil(readingTime(data.content).minutes);
     }
-  }
 
-  return data;
-};
-
-const beforeChangeHook: CollectionBeforeChangeHook = async ({ data }) => {
-  if (data) {
     // Generate SEO metadata
     if (data.title) {
       data.seoTitle = data.title;
@@ -253,7 +246,6 @@ const Posts: CollectionConfig = {
   ],
   hooks: {
     beforeValidate: [beforeValidateHook],
-    beforeChange: [beforeChangeHook],
   },
 };
 
