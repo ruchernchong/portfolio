@@ -104,9 +104,6 @@ importers:
       rss:
         specifier: ^1.2.2
         version: 1.2.2
-      schema-dts:
-        specifier: ^1.1.2
-        version: 1.1.2(typescript@5.3.3)
       sharp:
         specifier: ^0.32.6
         version: 0.32.6
@@ -183,6 +180,9 @@ importers:
       prettier-plugin-tailwindcss:
         specifier: ^0.6.8
         version: 0.6.8(prettier@3.3.3)
+      schema-dts:
+        specifier: ^1.1.2
+        version: 1.1.2(typescript@5.3.3)
       semantic-release:
         specifier: ^24.2.0
         version: 24.2.0(typescript@5.3.3)

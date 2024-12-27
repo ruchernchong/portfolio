@@ -50,11 +50,4 @@ export default buildConfig({
     },
   }),
   sharp,
-  admin: {
-    livePreview: {
-      url: ({ data }) =>
-        `${process.env.NEXT_PUBLIC_BASE_URL}/posts/${data.slug}`,
-      collections: ["posts"],
-    },
-  },
 });
