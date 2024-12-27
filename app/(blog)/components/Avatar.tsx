@@ -1,6 +1,6 @@
 import Image from "next/image";
-import avatar from "@/public/images/avatar.jpg";
-import avatarHover from "@/public/images/avatar-hover.jpg";
+import avatar from "../../../public/images/avatar.jpg";
+import avatarHover from "../../../public/images/avatar-hover.jpg";
 
 const Avatar = () => {
   return (
