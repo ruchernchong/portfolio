@@ -6,6 +6,7 @@ import {
 import { format, formatISO } from "date-fns";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { connection } from "next/server";
 import { Suspense } from "react";
 import { StructuredData } from "@/app/(blog)/_components/structured-data";
 import StatsBar from "@/app/(blog)/analytics/_components/stats-bar";
@@ -17,18 +18,15 @@ import {
   getPublishedPostSlugs,
 } from "@/lib/queries/posts";
 
-type Params = Promise<{ slug: string }>;
+interface Props {
+  params: Promise<{ slug: string }>;
+}
 
-// Cached post fetching with cacheSignal for cleanup
-const getPost = (slug: string) => {
-  return getPublishedPostBySlug(slug);
-};
-
-export const generateMetadata = async (props: {
-  params: Params;
-}): Promise<Metadata> => {
-  const params = await props.params;
-  const post = await getPost(params.slug);
+export const generateMetadata = async ({
+  params,
+}: Props): Promise<Metadata> => {
+  const { slug } = await params;
+  const post = await getPublishedPostBySlug(slug);
 
   if (!post) {
     notFound();
@@ -51,10 +49,9 @@ export const generateStaticParams = async () => {
   return publishedPosts.map(({ slug }) => ({ slug }));
 };
 
-const PostPage = async (props: { params: Params }) => {
-  const params = await props.params;
-  // Use cached getPost - deduplicates with generateMetadata call
-  const post = await getPost(params.slug);
+const PostPage = async ({ params }: Props) => {
+  const { slug } = await params;
+  const post = await getPublishedPostBySlug(slug);
 
   if (!post || !post.publishedAt) {
     return notFound();
