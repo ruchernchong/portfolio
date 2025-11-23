@@ -20,8 +20,6 @@ import type { Likes, PostStats } from "@/types";
  * ```
  */
 export class PostStatsService {
-  constructor(private readonly cache: CacheService) {}
-
   /**
    * Get post statistics from cache or initialize with defaults
    *
@@ -46,6 +44,8 @@ export class PostStatsService {
 
     return stats;
   });
+
+  constructor(private readonly cache: CacheService) {}
 
   /**
    * Increment view count for a post
@@ -115,7 +115,10 @@ export class PostStatsService {
    * @param userHash - Hashed user identifier (optional)
    * @returns Number of likes from this user
    */
-  async getLikesByUser(slug: string, userHash?: string): Promise<number> {
+  async getLikesByUser(
+    slug: string,
+    userHash: string = "127.0.0.1", // TODO: Implement a proper fix for using IP Address with Next.js 16 Cache Components
+  ): Promise<number> {
     if (!userHash) return 0;
     const stats = await this.getStats(slug);
     return stats.likesByUser[userHash] || 0;

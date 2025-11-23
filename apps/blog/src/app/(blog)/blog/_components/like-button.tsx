@@ -31,9 +31,10 @@ const LikeButton = ({
   );
 
   const handleClick = async () => {
-    if (optimisticLikes.likesByUser >= MAX_LIKES_PER_USER) {
-      return;
-    }
+    // TODO: Temporary disable maximum likes per user
+    // if (optimisticLikes.likesByUser >= MAX_LIKES_PER_USER) {
+    //   return;
+    // }
 
     addOptimisticLike(optimisticLikes);
     const stats = await incrementLikes(slug);
