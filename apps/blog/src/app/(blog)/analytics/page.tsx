@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { Fragment, Suspense } from "react";
 import { connection } from "next/server";
+import { Fragment, Suspense } from "react";
 import { getBrowsers } from "@/app/(blog)/analytics/_actions/browsers";
 import { getCountries } from "@/app/(blog)/analytics/_actions/countries";
 import { getDevices } from "@/app/(blog)/analytics/_actions/devices";

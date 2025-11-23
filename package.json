@@ -9,6 +9,7 @@
     "test:coverage": "turbo test:coverage",
     "lint": "turbo lint",
     "lint:blog": "turbo @ruchernchong/portfolio#lint",
+    "format": "turbo run format",
     "db:drop": "turbo @ruchernchong/portfolio#drop",
     "db:generate": "turbo @ruchernchong/portfolio#generate",
     "db:migrate": "turbo @ruchernchong/portfolio#migrate",

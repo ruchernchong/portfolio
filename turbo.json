@@ -40,6 +40,10 @@
       "inputs": ["$TURBO_DEFAULT$", "*.config.js", "*.config.ts", "biome.json"],
       "cache": false
     },
+    "format": {
+      "dependsOn": ["^format"],
+      "inputs": ["$TURBO_DEFAULT$"]
+    },
     "generate": {
       "inputs": ["src/schema/**", "drizzle.config.ts"],
       "outputs": ["migrations/**"],

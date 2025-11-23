@@ -6,7 +6,6 @@ import {
 import { format, formatISO } from "date-fns";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { connection } from "next/server";
 import { Suspense } from "react";
 import { StructuredData } from "@/app/(blog)/_components/structured-data";
 import StatsBar from "@/app/(blog)/analytics/_components/stats-bar";
