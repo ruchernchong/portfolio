@@ -71,19 +71,20 @@ This is a Turborepo monorepo containing a Next.js 16 portfolio website with an i
 
 ### Tech Stack
 
-- **Framework**: Next.js 16.0.0 with App Router and React 19.2
+- **Framework**: Next.js 16.0.0 with App Router and React 19.2.0
 - **Content**: Database-backed MDX with next-mdx-remote 5.0.0 for compilation
-- **Database**: Neon PostgreSQL with Drizzle ORM 0.38.3
+- **Database**: Neon PostgreSQL (@neondatabase/serverless 0.10.4) with Drizzle ORM 0.38.3 and drizzle-kit 0.30.1
 - **Authentication**: Better Auth 1.3.28 with OAuth providers (GitHub, Google)
 - **Cache**: Upstash Redis 1.34.3 for analytics and caching
-- **API Layer**: tRPC 11.4.2 for type-safe API routes
-- **Data Fetching**: Apollo Client 3.12.2 for GraphQL queries
-- **Styling**: Tailwind CSS v4.0.14 with Tailwind Typography
-- **Testing**: Vitest 4.0.3 with React Testing Library 16.3.0
-- **Code Quality**: Biome 2.2.6 for linting/formatting, TypeScript 5.2.2 strict mode, Husky 9.1.6 for git hooks
-- **Build Tool**: Turbo 2.6.1 for monorepo orchestration
-- **Deployment**: Vercel with automated migrations
-- **React Features**: React Compiler (babel-plugin-react-compiler 1.0.0), Cache Components mode enabled
+- **API Layer**: tRPC 11.4.2 for type-safe API routes with @tanstack/react-query 5.81.2
+- **Data Fetching**: Apollo Client 3.12.2 for GraphQL queries (@octokit/rest 22.0.0 for GitHub API)
+- **Styling**: Tailwind CSS v4.0.14 (@tailwindcss/postcss 4.0.14) with Tailwind Typography 0.5.8
+- **UI Components**: Radix UI primitives, Lucide React 0.471.1 icons, Framer Motion 12.23.6, shadcn 3.4.2
+- **Testing**: Vitest 4.0.3 with React Testing Library 16.3.0 and @vitest/coverage-v8 4.0.3
+- **Code Quality**: Biome 2.2.6 for linting/formatting, TypeScript 5.2.2 strict mode, Husky 9.1.6 for git hooks, lint-staged 15.5.2
+- **Build Tool**: Turbo 2.6.1 for monorepo orchestration, Vite 7.1.12 for test bundling
+- **Deployment**: Vercel with automated migrations (@vercel/analytics 1.5.0, @vercel/speed-insights 1.2.0, @vercel/og 0.0.27)
+- **React Features**: React Compiler (babel-plugin-react-compiler 1.0.0), Cache Components mode enabled (cacheComponents: true)
 
 ### Key Features
 
@@ -103,10 +104,10 @@ This is a Turborepo monorepo containing a Next.js 16 portfolio website with an i
     - `posts.ts`: Blog posts with MDX content, metadata, tags, and publish status
     - `sessions.ts`: Session tracking for analytics (visits, geolocation, device info)
     - `auth.ts`: Better Auth authentication tables (users, accounts, sessions, verification)
-    - `index.ts`: Database client export
+    - `index.ts`: Database client export (Neon serverless connection with WebSocket support)
 - **Configuration**: `apps/blog/drizzle.config.ts` (uses DATABASE_URL from env)
 - **Migrations**: `apps/blog/migrations/` managed by drizzle-kit 0.30.1
-- **Seeding**: `apps/blog/src/scripts/seed.ts` using drizzle-seed 0.3.1
+- **Seeding**: `apps/blog/src/scripts/seed.ts` using drizzle-seed 0.3.1 (run with NODE_ENV=development)
 
 ### Analytics System
 
@@ -200,36 +201,35 @@ Required environment variables (see `apps/blog/.env.example`):
 
 ### Core Configuration
 
-- `NEXT_PUBLIC_BASE_URL` - Base URL for the application (e.g., http://localhost:3000)
-- `NODE_ENV` - Environment mode (development, production)
+- `NEXT_PUBLIC_BASE_URL` - Base URL for the application (e.g., http://localhost:3000, https://ruchern.dev)
 
 ### Database
 
-- `DATABASE_URL` - Neon PostgreSQL connection string
+- `DATABASE_URL` - Neon PostgreSQL connection string (format: postgresql://user:password@host/database?sslmode=require)
 
 ### GitHub Integration
 
-- `GH_ACCESS_TOKEN` - GitHub personal access token for API access
+- `GH_ACCESS_TOKEN` - GitHub personal access token for API access (used by @octokit/rest)
 
 ### Redis (Upstash)
 
-- `UPSTASH_REDIS_REST_URL` - Upstash Redis REST URL
-- `UPSTASH_REDIS_REST_TOKEN` - Upstash Redis REST token
+- `UPSTASH_REDIS_REST_URL` - Upstash Redis REST API URL (e.g., https://xxx.upstash.io)
+- `UPSTASH_REDIS_REST_TOKEN` - Upstash Redis REST API token
 
 ### Analytics
 
-- `IP_SALT` - Salt for IP address hashing (privacy protection)
+- `IP_SALT` - Random salt string for IP address hashing (privacy protection, generate with: openssl rand -hex 32)
 
 ### Authentication (Better Auth)
 
-- `BETTER_AUTH_SECRET` - Secret key for Better Auth
-- `BETTER_AUTH_URL` - Base URL for auth callbacks (e.g., http://localhost:3000)
+- `BETTER_AUTH_SECRET` - Secret key for Better Auth (generate with: openssl rand -hex 32)
+- `BETTER_AUTH_URL` - Base URL for auth callbacks (http://localhost:3000 for dev, https://your-domain.com for production)
 
 ### OAuth Providers
 
-- `GITHUB_CLIENT_ID` - GitHub OAuth app client ID
+- `GITHUB_CLIENT_ID` - GitHub OAuth app client ID (create at: https://github.com/settings/developers)
 - `GITHUB_CLIENT_SECRET` - GitHub OAuth app client secret
-- `GOOGLE_CLIENT_ID` - Google OAuth app client ID
+- `GOOGLE_CLIENT_ID` - Google OAuth app client ID (create at: https://console.cloud.google.com)
 - `GOOGLE_CLIENT_SECRET` - Google OAuth app client secret
 
 ## Documentation & Learning Resources
@@ -261,14 +261,18 @@ examples. This is especially important for rapidly evolving libraries.
 
 **Installed Versions** (always check Context7 for version-specific docs):
 
-- Next.js 16.0.0 (with Cache Components enabled)
-- React 19.2.0
-- Drizzle ORM 0.38.3
+- Next.js 16.0.0 (with Cache Components and React Compiler enabled)
+- React 19.2.0 with React DOM 19.2.0
+- Drizzle ORM 0.38.3 with drizzle-kit 0.30.1
 - Better Auth 1.3.28
-- Tailwind CSS 4.0.14
-- tRPC 11.4.2
-- Vitest 4.0.3
+- Tailwind CSS 4.0.14 with @tailwindcss/postcss 4.0.14
+- tRPC 11.4.2 with @tanstack/react-query 5.81.2
+- Vitest 4.0.3 with @vitest/coverage-v8 4.0.3
 - next-mdx-remote 5.0.0
+- Framer Motion 12.23.6
+- Lucide React 0.471.1
+- Upstash Redis 1.34.3
+- Apollo Client 3.12.2
 
 **How to Use**:
 
@@ -345,6 +349,18 @@ All blog content is managed through the database-backed Content Studio:
 - Protected routes using `(auth)` route group
 - Login page at `/login` with OAuth buttons
 - Session management and last login method tracking
+
+### Next.js Configuration
+
+The Next.js configuration (`apps/blog/next.config.ts`) includes:
+
+- **React Compiler**: Enabled via `reactCompiler: true` (babel-plugin-react-compiler 1.0.0)
+- **Cache Components**: Enabled via `cacheComponents: true` (Next.js 16 feature)
+- **Turbopack**: File system caching enabled for dev (`turbopackFileSystemCacheForDev: true`)
+- **Strict Mode**: Enabled via `reactStrictMode: true`
+- **Image Optimization**: Remote patterns for GitHub avatars and Google profile pictures
+- **Security Headers**: HSTS, XSS Protection, X-Frame-Options, CSP, Referrer Policy, DNS Prefetch Control
+- **Logging**: Full URL logging for fetch requests (`logging.fetches.fullUrl: true`)
 
 ## Tailwind CSS Guidelines
 
