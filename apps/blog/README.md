@@ -55,7 +55,7 @@ This portfolio is built with modern web technologies:
 ### Prerequisites
 
 - **Node.js 18.x or higher** - JavaScript runtime (tested with v22.20.0)
-- **pnpm 10.2.0 or higher** - Fast, disk space efficient package manager
+- **pnpm 10.22.0 or higher** - Fast, disk space efficient package manager
 - **Git** - Version control system
 - **Neon PostgreSQL database** - Serverless database (sign up at [neon.tech](https://neon.tech))
 - **Upstash Redis** - Serverless Redis (sign up at [upstash.com](https://upstash.com))
