@@ -5,11 +5,12 @@ import { postStatsService } from "@/lib/services";
 
 interface StatsBarProps {
   slug: string;
+  userHash: string;
 }
 
-const StatsBar = async ({ slug }: StatsBarProps) => {
+const StatsBar = async ({ slug, userHash }: StatsBarProps) => {
   const totalLikes = await postStatsService.getTotalLikes(slug);
-  const likesByUser = await postStatsService.getLikesByUser(slug);
+  const likesByUser = await postStatsService.getLikesByUser(slug, userHash);
 
   return (
     <div className="md:-translate-y-1/2 sticky top-0 z-50 md:fixed md:top-1/2 md:right-0 md:bottom-auto md:left-auto">
