@@ -1,3 +1,16 @@
+## [1.11.0](https://github.com/ruchernchong/portfolio/compare/v1.10.2...v1.11.0) (2025-11-23)
+
+### Features
+
+* enable React native ViewTransition ([b977f7f](https://github.com/ruchernchong/portfolio/commit/b977f7f092e51a55ac18f525a64111f454d927ed))
+* migrate to Cache Components mode ([cff400c](https://github.com/ruchernchong/portfolio/commit/cff400c74904caea804993bf7e42529869587feb))
+
+### Bug Fixes
+
+* **blog:** build errors on Vercel ([2b78f89](https://github.com/ruchernchong/portfolio/commit/2b78f89eee70e8518c3b9bd68be020c2516ed9b6))
+* temporary workaround for IP hashing with Cache ([5bafc44](https://github.com/ruchernchong/portfolio/commit/5bafc44076ea18bf495842678a4174af0b9eabdf))
+* wrap runtime data in Suspense ([016d3f3](https://github.com/ruchernchong/portfolio/commit/016d3f3a6871b1122ce6bf9f58b019086a774d99))
+
 ## [1.10.2](https://github.com/ruchernchong/portfolio/compare/v1.10.1...v1.10.2) (2025-10-24)
 
 ### Bug Fixes
