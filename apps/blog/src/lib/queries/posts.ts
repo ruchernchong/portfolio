@@ -8,6 +8,7 @@ import {
   isNull,
   ne,
 } from "drizzle-orm";
+import { cacheTag } from "next/cache";
 import { db, posts } from "@/schema";
 
 export const getPostBySlug = async (slug: string) => {
@@ -29,6 +30,9 @@ export const getPublishedPosts = async () => {
 };
 
 export const getPublishedPostBySlug = async (slug: string) => {
+  "use cache";
+  cacheTag("post");
+
   return db.query.posts.findFirst({
     with: {
       author: true,
@@ -42,6 +46,9 @@ export const getPublishedPostBySlug = async (slug: string) => {
 };
 
 export const getPublishedPostSlugs = async () => {
+  "use cache";
+  cacheTag("post");
+
   return db
     .select({ slug: posts.slug })
     .from(posts)
