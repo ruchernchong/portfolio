@@ -22,6 +22,9 @@ export const getPostBySlug = async (slug: string) => {
 };
 
 export const getPublishedPosts = async () => {
+  "use cache";
+  cacheTag("post");
+
   return db
     .select()
     .from(posts)

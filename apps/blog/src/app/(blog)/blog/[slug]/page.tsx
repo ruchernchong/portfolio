@@ -5,7 +5,9 @@ import {
 } from "@heroicons/react/24/outline";
 import { format, formatISO } from "date-fns";
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
+import { connection } from "next/server";
 import { Suspense } from "react";
 import { StructuredData } from "@/app/(blog)/_components/structured-data";
 import StatsBar from "@/app/(blog)/analytics/_components/stats-bar";
@@ -14,11 +16,17 @@ import { RelatedPosts } from "@/app/(blog)/blog/_components/related-posts";
 import { Typography } from "@/components/shared/typography";
 import {
   getPublishedPostBySlug,
-  getPublishedPostSlugs,
+  // getPublishedPostSlugs,
 } from "@/lib/queries/posts";
+import { generateUserHash } from "@/utils/hash";
 
 interface Props {
   params: Promise<{ slug: string }>;
+}
+
+interface CachedPostContentProps {
+  slug: string;
+  userHash: string;
 }
 
 export const generateMetadata = async ({
@@ -42,14 +50,39 @@ export const generateMetadata = async ({
   };
 };
 
-export const generateStaticParams = async () => {
-  const publishedPosts = await getPublishedPostSlugs();
-
-  return publishedPosts.map(({ slug }) => ({ slug }));
-};
+// TODO: Re-enable static generation after resolving Cache Components conflict with headers()
+// Currently disabled because headers() access for IP hashing makes the route dynamic
+// export const generateStaticParams = async () => {
+//   const publishedPosts = await getPublishedPostSlugs();
+//
+//   return publishedPosts.map(({ slug }) => ({ slug }));
+// };
 
 const PostPage = async ({ params }: Props) => {
+  return (
+    <Suspense fallback={null}>
+      <Content params={params} />
+    </Suspense>
+  );
+};
+
+const Content = async ({ params }: Props) => {
+  await connection();
+
   const { slug } = await params;
+  const headersList = await headers();
+  const forwardedFor = headersList.get("x-forwarded-for");
+  const realIp = headersList.get("x-real-ip");
+  const ipAddress = forwardedFor?.split(",")[0] ?? realIp ?? "127.0.0.1";
+  const userHash = generateUserHash(ipAddress);
+
+  return <CachedPostContent slug={slug} userHash={userHash} />;
+};
+
+const CachedPostContent = async ({
+  slug,
+  userHash,
+}: CachedPostContentProps) => {
   const post = await getPublishedPostBySlug(slug);
 
   if (!post || !post.publishedAt) {
@@ -64,7 +97,7 @@ const PostPage = async ({ params }: Props) => {
       <article className="prose prose-invert mx-auto mb-16 max-w-4xl prose-img:rounded-2xl prose-a:text-pink-500">
         <div className="flex flex-col items-center gap-y-4 text-center">
           <Suspense fallback={null}>
-            <StatsBar slug={post.slug} />
+            <StatsBar slug={post.slug} userHash={userHash} />
           </Suspense>
           <div className="flex gap-x-2 text-zinc-400 md:flex-row">
             <div className="flex items-center justify-center gap-x-2">

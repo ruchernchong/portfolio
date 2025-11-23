@@ -3,7 +3,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import Script from "next/script";
-import { type ReactNode, Suspense } from "react";
+import { type ReactNode, Suspense, ViewTransition } from "react";
 import { Footer } from "@/app/(blog)/_components/footer";
 import { Header } from "@/app/(blog)/_components/header";
 import Analytics from "@/components/analytics-tracker";
@@ -71,30 +71,32 @@ const RootLayout = ({ children }: Readonly<{ children: ReactNode }>) => {
       suppressHydrationWarning
     >
       <body className="bg-zinc-900 text-zinc-50" suppressHydrationWarning>
-        <Providers>
-          <TRPCProvider>
-            <div className="flex min-h-screen flex-col">
+        <ViewTransition>
+          <Providers>
+            <TRPCProvider>
+              <div className="flex min-h-screen flex-col">
+                <Suspense fallback={null}>
+                  <Header />
+                </Suspense>
+                <main className="mx-auto my-16 w-screen max-w-4xl grow px-4 py-24">
+                  {children}
+                </main>
+                <Footer />
+              </div>
               <Suspense fallback={null}>
-                <Header />
+                <Analytics />
               </Suspense>
-              <main className="mx-auto my-16 w-screen max-w-4xl grow px-4 py-24">
-                {children}
-              </main>
-              <Footer />
-            </div>
-            <Suspense fallback={null}>
-              <Analytics />
-            </Suspense>
-            <VercelAnalytics />
-            <SpeedInsights />
-          </TRPCProvider>
-        </Providers>
-        <Script
-          defer
-          src="https://analytics.ruchern.dev/script.js"
-          data-website-id="23a07b6c-093c-4831-840e-9d2998eba9e9"
-          data-domains="ruchern.dev"
-        />
+              <VercelAnalytics />
+              <SpeedInsights />
+            </TRPCProvider>
+          </Providers>
+          <Script
+            defer
+            src="https://analytics.ruchern.dev/script.js"
+            data-website-id="23a07b6c-093c-4831-840e-9d2998eba9e9"
+            data-domains="ruchern.dev"
+          />
+        </ViewTransition>
       </body>
     </html>
   );
