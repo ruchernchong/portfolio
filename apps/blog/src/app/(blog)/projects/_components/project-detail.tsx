@@ -1,6 +1,6 @@
-"use client";
-
-import { Button, Chip, Link } from "@heroui/react";
+import { Button } from "@heroui/button";
+import { Chip } from "@heroui/chip";
+import { Link } from "@heroui/link";
 import { ExternalLinkIcon } from "lucide-react";
 import Image from "next/image";
 import type { Project } from "@/types";

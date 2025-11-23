@@ -1,5 +1,4 @@
 import { and, desc, eq, isNotNull, isNull } from "drizzle-orm";
-import { cache } from "react";
 import { CacheConfig } from "@/lib/config/cache.config";
 import { getPublishedPostsBySlugs } from "@/lib/queries/posts";
 import type { CacheService } from "@/lib/services/cache.service";
@@ -28,6 +27,8 @@ export interface PopularPost {
  * ```
  */
 export class PopularPostsService {
+  constructor(private readonly cache: CacheService) {}
+
   /**
    * Get top N popular posts by view count
    *
@@ -39,56 +40,52 @@ export class PopularPostsService {
    * @param limit - Maximum number of posts to return
    * @returns Array of popular posts with view counts
    */
-  getPopularPosts = cache(
-    async (
-      limit: number = CacheConfig.POPULAR_POSTS.LIMIT,
-    ): Promise<PopularPost[]> => {
-      // Get top N from sorted set (highest scores first)
-      const results = await this.cache.zrange(
-        CacheConfig.REDIS_KEYS.POPULAR_SET,
-        0,
-        limit - 1,
-        {
-          rev: true,
-          withScores: true,
-        },
-      );
+  getPopularPosts = async (
+    limit: number = CacheConfig.POPULAR_POSTS.LIMIT,
+  ): Promise<PopularPost[]> => {
+    // Get top N from sorted set (highest scores first)
+    const results = await this.cache.zrange(
+      CacheConfig.REDIS_KEYS.POPULAR_SET,
+      0,
+      limit - 1,
+      {
+        rev: true,
+        withScores: true,
+      },
+    );
 
-      // Fallback to recent posts if Redis fails or returns empty
-      if (!results || results.length === 0) {
-        return this.getFallbackPosts(limit);
-      }
+    // Fallback to recent posts if Redis fails or returns empty
+    if (!results || results.length === 0) {
+      return this.getFallbackPosts(limit);
+    }
 
-      // Parse results - zrange with withScores returns alternating member/score values
-      const parsedResults: Array<{ member: string; score: number }> = [];
-      for (let i = 0; i < results.length; i += 2) {
-        parsedResults.push({
-          member: results[i] as string,
-          score: Number(results[i + 1]),
-        });
-      }
+    // Parse results - zrange with withScores returns alternating member/score values
+    const parsedResults: Array<{ member: string; score: number }> = [];
+    for (let i = 0; i < results.length; i += 2) {
+      parsedResults.push({
+        member: results[i] as string,
+        score: Number(results[i + 1]),
+      });
+    }
 
-      const slugs = parsedResults.map((r) => r.member);
+    const slugs = parsedResults.map((r) => r.member);
 
-      // Fetch full post data from DB
-      const popularPosts = await getPublishedPostsBySlugs(slugs);
+    // Fetch full post data from DB
+    const popularPosts = await getPublishedPostsBySlugs(slugs);
 
-      // Merge with view counts and sort by views
-      return popularPosts
-        .map((post) => ({
-          id: post.id,
-          slug: post.slug,
-          title: post.title,
-          summary: post.summary,
-          publishedAt: post.publishedAt,
-          metadata: post.metadata,
-          views: parsedResults.find((r) => r.member === post.slug)?.score || 0,
-        }))
-        .sort((a, b) => b.views - a.views);
-    },
-  );
-
-  constructor(private readonly cache: CacheService) {}
+    // Merge with view counts and sort by views
+    return popularPosts
+      .map((post) => ({
+        id: post.id,
+        slug: post.slug,
+        title: post.title,
+        summary: post.summary,
+        publishedAt: post.publishedAt,
+        metadata: post.metadata,
+        views: parsedResults.find((r) => r.member === post.slug)?.score || 0,
+      }))
+      .sort((a, b) => b.views - a.views);
+  };
 
   /**
    * Update popular score for a post

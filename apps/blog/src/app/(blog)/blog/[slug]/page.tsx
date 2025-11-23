@@ -6,7 +6,7 @@ import {
 import { format, formatISO } from "date-fns";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { cache, cacheSignal } from "react";
+import { Suspense } from "react";
 import { StructuredData } from "@/app/(blog)/_components/structured-data";
 import StatsBar from "@/app/(blog)/analytics/_components/stats-bar";
 import { Mdx } from "@/app/(blog)/blog/_components/mdx";
@@ -20,22 +20,9 @@ import {
 type Params = Promise<{ slug: string }>;
 
 // Cached post fetching with cacheSignal for cleanup
-const getPost = cache(async (slug: string) => {
-  const signal = cacheSignal();
-
-  // Fetch post using query function
-  const post = await getPublishedPostBySlug(slug);
-
-  // Listen for cache expiration to perform cleanup if needed
-  if (signal) {
-    signal.addEventListener("abort", () => {
-      // Cache lifetime ended - cleanup resources if needed
-      console.log(`[cacheSignal] Cache expired for post: ${slug}`);
-    });
-  }
-
-  return post;
-});
+const getPost = (slug: string) => {
+  return getPublishedPostBySlug(slug);
+};
 
 export const generateMetadata = async (props: {
   params: Params;
@@ -80,7 +67,9 @@ const PostPage = async (props: { params: Params }) => {
       <StructuredData data={post.metadata.structuredData} />
       <article className="prose prose-invert mx-auto mb-16 max-w-4xl prose-img:rounded-2xl prose-a:text-pink-500">
         <div className="flex flex-col items-center gap-y-4 text-center">
-          <StatsBar slug={post.slug} />
+          <Suspense fallback={null}>
+            <StatsBar slug={post.slug} />
+          </Suspense>
           <div className="flex gap-x-2 text-zinc-400 md:flex-row">
             <div className="flex items-center justify-center gap-x-2">
               <CalendarDaysIcon className="h-6 w-6" />

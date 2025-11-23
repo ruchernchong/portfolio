@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { Fragment } from "react";
+import { Fragment, Suspense } from "react";
+import { connection } from "next/server";
 import { getBrowsers } from "@/app/(blog)/analytics/_actions/browsers";
 import { getCountries } from "@/app/(blog)/analytics/_actions/countries";
 import { getDevices } from "@/app/(blog)/analytics/_actions/devices";
@@ -10,39 +11,20 @@ import { getVisits } from "@/app/(blog)/analytics/_actions/visits";
 import TotalVisitsChart from "@/app/(blog)/analytics/_components/total-visits-chart";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-export const dynamic = "force-dynamic";
+const AnalyticsContent = async () => {
+  // Opt out of prerendering for this component
+  await connection();
 
-const fetchAnalytics = async () => {
-  try {
-    const [browsers, countries, devices, os, pages, referrers, visits] =
-      await Promise.all([
-        getBrowsers(),
-        getCountries(),
-        getDevices(),
-        getOS(),
-        getPages(),
-        getReferrers(),
-        getVisits(),
-      ]);
-
-    return {
-      browsers,
-      countries,
-      devices,
-      os,
-      pages,
-      referrers,
-      visits,
-    };
-  } catch (e) {
-    console.error("Failed to fetch analytics data", e);
-    throw new Error("Failed to fetch analytics data");
-  }
-};
-
-const AnalyticsPage = async () => {
-  const { browsers, countries, devices, os, pages, referrers, visits } =
-    await fetchAnalytics();
+  const [browsers, countries, devices, os, pages, referrers, visits] =
+    await Promise.all([
+      getBrowsers(),
+      getCountries(),
+      getDevices(),
+      getOS(),
+      getPages(),
+      getReferrers(),
+      getVisits(),
+    ]);
 
   return (
     <div className="grid grid-cols-1 gap-4">
@@ -235,6 +217,14 @@ const AnalyticsPage = async () => {
         </CardContent>
       </Card>
     </div>
+  );
+};
+
+const AnalyticsPage = () => {
+  return (
+    <Suspense fallback={<div>Loading analytics...</div>}>
+      <AnalyticsContent />
+    </Suspense>
   );
 };
 

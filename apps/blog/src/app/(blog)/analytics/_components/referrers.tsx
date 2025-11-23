@@ -1,3 +1,5 @@
+"use client";
+
 import {
   Card,
   CardContent,
@@ -9,7 +11,6 @@ import { trpc } from "@/trpc/client";
 
 export const Referrers = () => {
   const { data = [], isLoading } = trpc.analytics.getReferrers.useQuery();
-  console.log(data);
 
   return (
     <Card>
