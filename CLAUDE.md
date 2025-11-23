@@ -8,12 +8,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 #### Development
 
-- `pnpm dev` - Start development server with hot reload (uses Turbo)
+- `pnpm dev` - Start development server with hot reload and Drizzle Studio (uses Turbo)
 - `pnpm build` - Build all apps for production (uses Turbo)
 - `pnpm start` - Start production server (uses Turbo)
 - `pnpm test` - Run tests across all apps (uses Turbo)
+- `pnpm test:coverage` - Generate coverage reports (uses Turbo)
 - `pnpm lint` - Run linting across all apps with Biome (uses Turbo)
 - `pnpm lint:blog` - Run linting for blog app with Biome
+- `pnpm format` - Format code with Biome (uses Turbo)
 
 #### Database Management
 
@@ -29,21 +31,21 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 #### Quality & Release
 
-- `pnpm release` - Create semantic release (runs build, test, lint, check-types)
+- `pnpm release` - Create semantic release (runs semantic-release with conventional commits)
 - `pnpm release:blog` - Release blog app specifically
 
 ### App-specific Commands (run from `/apps/blog/`)
 
 #### Development
 
-- `pnpm dev` - Start blog dev server (next dev --turbopack)
+- `pnpm dev` - Start blog dev server (next dev)
 - `pnpm build` - Build blog app for production
 - `pnpm start` - Start production server
-- `pnpm test` - Run Vitest tests with coverage
-- `pnpm test -- utils/__tests__/truncate.test.ts` - Run single test file
+- `pnpm test` - Run Vitest tests
+- `pnpm test:watch` - Run Vitest tests in watch mode
 - `pnpm test:coverage` - Generate coverage report
-- `pnpm check-types` - TypeScript type checking
-- `pnpm vercel-build` - Production build with migrations (for Vercel)
+- `pnpm test -- utils/__tests__/truncate.test.ts` - Run single test file
+- `pnpm format` - Format code with Biome
 
 #### Database (App-level)
 
@@ -63,20 +65,25 @@ This is a Turborepo monorepo containing a Next.js 16 portfolio website with an i
 
 ### Monorepo Structure
 
-- **Root**: Turborepo configuration with shared tooling (Biome, commitlint, semantic-release)
+- **Root**: Turborepo configuration with shared tooling (Biome, commitlint, semantic-release, Husky)
 - **apps/blog**: Main Next.js application with blog functionality and integrated CMS at `/studio`
+- **packages/**: Currently empty but structured for shared packages (future use)
 
 ### Tech Stack
 
-- **Framework**: Next.js 16 with App Router and React 19.2
-- **Content**: Database-backed MDX with next-mdx-remote for compilation
-- **Database**: Neon PostgreSQL with Drizzle ORM
-- **Authentication**: Better Auth with OAuth providers (GitHub, Google)
-- **Cache**: Upstash Redis for analytics and caching
-- **Styling**: Tailwind CSS v4
-- **Testing**: Vitest with React Testing Library
-- **Code Quality**: Biome for linting/formatting, TypeScript strict mode
+- **Framework**: Next.js 16.0.0 with App Router and React 19.2
+- **Content**: Database-backed MDX with next-mdx-remote 5.0.0 for compilation
+- **Database**: Neon PostgreSQL with Drizzle ORM 0.38.3
+- **Authentication**: Better Auth 1.3.28 with OAuth providers (GitHub, Google)
+- **Cache**: Upstash Redis 1.34.3 for analytics and caching
+- **API Layer**: tRPC 11.4.2 for type-safe API routes
+- **Data Fetching**: Apollo Client 3.12.2 for GraphQL queries
+- **Styling**: Tailwind CSS v4.0.14 with Tailwind Typography
+- **Testing**: Vitest 4.0.3 with React Testing Library 16.3.0
+- **Code Quality**: Biome 2.2.6 for linting/formatting, TypeScript 5.2.2 strict mode, Husky 9.1.6 for git hooks
+- **Build Tool**: Turbo 2.6.1 for monorepo orchestration
 - **Deployment**: Vercel with automated migrations
+- **React Features**: React Compiler (babel-plugin-react-compiler 1.0.0), Cache Components mode enabled
 
 ### Key Features
 
@@ -92,13 +99,14 @@ This is a Turborepo monorepo containing a Next.js 16 portfolio website with an i
 
 ### Database Architecture
 
-- Schema in `apps/blog/src/schema/` using Drizzle ORM
+- **Schema Location**: `apps/blog/src/schema/` using Drizzle ORM 0.38.3
     - `posts.ts`: Blog posts with MDX content, metadata, tags, and publish status
     - `sessions.ts`: Session tracking for analytics (visits, geolocation, device info)
     - `auth.ts`: Better Auth authentication tables (users, accounts, sessions, verification)
     - `index.ts`: Database client export
-- Configuration in `apps/blog/drizzle.config.ts`
-- Migrations in `apps/blog/migrations/` managed by drizzle-kit
+- **Configuration**: `apps/blog/drizzle.config.ts` (uses DATABASE_URL from env)
+- **Migrations**: `apps/blog/migrations/` managed by drizzle-kit 0.30.1
+- **Seeding**: `apps/blog/src/scripts/seed.ts` using drizzle-seed 0.3.1
 
 ### Analytics System
 
@@ -184,7 +192,7 @@ The service layer uses classes for better testability, dependency injection, and
 - Easy to unit test each layer independently
 - Reusable queries across multiple services
 - Business logic isolated from data access
-- Follows Next.js 15+ best practices (server actions for writes only)
+- Follows Next.js 16 best practices (server actions for writes only)
 
 ## Environment Variables
 
@@ -193,6 +201,7 @@ Required environment variables (see `apps/blog/.env.example`):
 ### Core Configuration
 
 - `NEXT_PUBLIC_BASE_URL` - Base URL for the application (e.g., http://localhost:3000)
+- `NODE_ENV` - Environment mode (development, production)
 
 ### Database
 
@@ -249,6 +258,17 @@ examples. This is especially important for rapidly evolving libraries.
 3. For troubleshooting library-specific issues
 4. When learning best practices for library usage
 5. Before upgrading library versions
+
+**Installed Versions** (always check Context7 for version-specific docs):
+
+- Next.js 16.0.0 (with Cache Components enabled)
+- React 19.2.0
+- Drizzle ORM 0.38.3
+- Better Auth 1.3.28
+- Tailwind CSS 4.0.14
+- tRPC 11.4.2
+- Vitest 4.0.3
+- next-mdx-remote 5.0.0
 
 **How to Use**:
 
