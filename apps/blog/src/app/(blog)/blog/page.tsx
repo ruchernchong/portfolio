@@ -1,5 +1,3 @@
-"use cache";
-
 import { format, formatISO } from "date-fns";
 import type { Metadata } from "next";
 import Link from "next/link";

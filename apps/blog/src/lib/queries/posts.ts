@@ -8,10 +8,10 @@ import {
   isNull,
   ne,
 } from "drizzle-orm";
-import { cacheTag } from "next/cache";
+import { cache } from "react";
 import { db, posts } from "@/schema";
 
-export const getPostBySlug = async (slug: string) => {
+export const getPostBySlug = cache(async (slug: string) => {
   const [post] = await db
     .select({ tags: posts.tags })
     .from(posts)
@@ -19,23 +19,17 @@ export const getPostBySlug = async (slug: string) => {
     .limit(1);
 
   return post;
-};
+});
 
-export const getPublishedPosts = async () => {
-  "use cache";
-  cacheTag("post");
-
+export const getPublishedPosts = cache(async () => {
   return db
     .select()
     .from(posts)
     .where(and(eq(posts.status, "published"), isNull(posts.deletedAt)))
     .orderBy(desc(posts.publishedAt));
-};
+});
 
-export const getPublishedPostBySlug = async (slug: string) => {
-  "use cache";
-  cacheTag("post");
-
+export const getPublishedPostBySlug = cache(async (slug: string) => {
   return db.query.posts.findFirst({
     with: {
       author: true,
@@ -46,19 +40,16 @@ export const getPublishedPostBySlug = async (slug: string) => {
       isNull(posts.deletedAt),
     ),
   });
-};
+});
 
-export const getPublishedPostSlugs = async () => {
-  "use cache";
-  cacheTag("post");
-
+export const getPublishedPostSlugs = cache(async () => {
   return db
     .select({ slug: posts.slug })
     .from(posts)
     .where(and(eq(posts.status, "published"), isNull(posts.deletedAt)));
-};
+});
 
-export const getPublishedPostsBySlugs = async (slugs: string[]) => {
+export const getPublishedPostsBySlugs = cache(async (slugs: string[]) => {
   return db
     .select()
     .from(posts)
@@ -70,21 +61,20 @@ export const getPublishedPostsBySlugs = async (slugs: string[]) => {
         isNull(posts.deletedAt),
       ),
     );
-};
+});
 
-export const getPostsWithOverlappingTags = async (
-  tags: string[],
-  excludeSlug: string,
-) => {
-  return db
-    .select()
-    .from(posts)
-    .where(
-      and(
-        arrayOverlaps(posts.tags, tags),
-        ne(posts.slug, excludeSlug),
-        eq(posts.status, "published"),
-        isNull(posts.deletedAt),
-      ),
-    );
-};
+export const getPostsWithOverlappingTags = cache(
+  async (tags: string[], excludeSlug: string) => {
+    return db
+      .select()
+      .from(posts)
+      .where(
+        and(
+          arrayOverlaps(posts.tags, tags),
+          ne(posts.slug, excludeSlug),
+          eq(posts.status, "published"),
+          isNull(posts.deletedAt),
+        ),
+      );
+  },
+);

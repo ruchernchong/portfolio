@@ -7,8 +7,6 @@ import { navLinks } from "@/config";
 import socials from "@/data/socials";
 
 export const Footer = async () => {
-  "use cache";
-
   return (
     <div className="mx-auto flex w-full max-w-4xl justify-center px-4 pb-6">
       <footer className="w-full rounded-2xl border border-white/10 bg-black/20 px-8 py-6 shadow-2xl backdrop-blur-lg">

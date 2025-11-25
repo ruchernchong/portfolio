@@ -1,5 +1,3 @@
-"use cache";
-
 import { Suspense } from "react";
 import { Referrers } from "@/app/(blog)/analytics/_components/referrers";
 import VisitsChart from "@/app/(blog)/analytics/_components/visits-chart";

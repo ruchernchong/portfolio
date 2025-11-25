@@ -1,5 +1,3 @@
-"use cache";
-
 import type { WebSite, WithContext } from "schema-dts";
 import { StructuredData } from "@/app/(blog)/_components/structured-data";
 import { AboutCard } from "@/app/(blog)/about/_components/about-card";

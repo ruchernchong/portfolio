@@ -12,8 +12,6 @@ export const generateStaticParams = async () => {
 };
 
 const EditPostPage = async ({ params }: Props) => {
-  "use cache";
-
   const { id } = await params;
 
   return (
