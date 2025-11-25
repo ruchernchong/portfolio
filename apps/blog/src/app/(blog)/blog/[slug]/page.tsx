@@ -16,7 +16,7 @@ import { RelatedPosts } from "@/app/(blog)/blog/_components/related-posts";
 import { Typography } from "@/components/shared/typography";
 import {
   getPublishedPostBySlug,
-  // getPublishedPostSlugs,
+  getPublishedPostSlugs,
 } from "@/lib/queries/posts";
 import { generateUserHash } from "@/utils/hash";
 
@@ -50,13 +50,11 @@ export const generateMetadata = async ({
   };
 };
 
-// TODO: Re-enable static generation after resolving Cache Components conflict with headers()
-// Currently disabled because headers() access for IP hashing makes the route dynamic
-// export const generateStaticParams = async () => {
-//   const publishedPosts = await getPublishedPostSlugs();
-//
-//   return publishedPosts.map(({ slug }) => ({ slug }));
-// };
+export const generateStaticParams = async () => {
+  const publishedPosts = await getPublishedPostSlugs();
+
+  return publishedPosts.map(({ slug }) => ({ slug }));
+};
 
 const PostPage = async ({ params }: Props) => {
   return (
