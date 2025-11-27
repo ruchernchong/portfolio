@@ -8,12 +8,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 #### Development
 
-- `pnpm dev` - Start development server with hot reload (uses Turbo)
+- `pnpm dev` - Start development server with hot reload and Drizzle Studio (uses Turbo)
 - `pnpm build` - Build all apps for production (uses Turbo)
 - `pnpm start` - Start production server (uses Turbo)
 - `pnpm test` - Run tests across all apps (uses Turbo)
+- `pnpm test:coverage` - Generate coverage reports (uses Turbo)
 - `pnpm lint` - Run linting across all apps with Biome (uses Turbo)
 - `pnpm lint:blog` - Run linting for blog app with Biome
+- `pnpm format` - Format code with Biome (uses Turbo)
 
 #### Database Management
 
@@ -29,21 +31,21 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 #### Quality & Release
 
-- `pnpm release` - Create semantic release (runs build, test, lint, check-types)
+- `pnpm release` - Create semantic release (runs semantic-release with conventional commits)
 - `pnpm release:blog` - Release blog app specifically
 
 ### App-specific Commands (run from `/apps/blog/`)
 
 #### Development
 
-- `pnpm dev` - Start blog dev server (next dev --turbopack)
+- `pnpm dev` - Start blog dev server (next dev)
 - `pnpm build` - Build blog app for production
 - `pnpm start` - Start production server
-- `pnpm test` - Run Vitest tests with coverage
-- `pnpm test -- utils/__tests__/truncate.test.ts` - Run single test file
+- `pnpm test` - Run Vitest tests
+- `pnpm test:watch` - Run Vitest tests in watch mode
 - `pnpm test:coverage` - Generate coverage report
-- `pnpm check-types` - TypeScript type checking
-- `pnpm vercel-build` - Production build with migrations (for Vercel)
+- `pnpm test -- utils/__tests__/truncate.test.ts` - Run single test file
+- `pnpm format` - Format code with Biome
 
 #### Database (App-level)
 
@@ -63,20 +65,26 @@ This is a Turborepo monorepo containing a Next.js 16 portfolio website with an i
 
 ### Monorepo Structure
 
-- **Root**: Turborepo configuration with shared tooling (Biome, commitlint, semantic-release)
+- **Root**: Turborepo configuration with shared tooling (Biome, commitlint, semantic-release, Husky)
 - **apps/blog**: Main Next.js application with blog functionality and integrated CMS at `/studio`
+- **packages/**: Currently empty but structured for shared packages (future use)
 
 ### Tech Stack
 
-- **Framework**: Next.js 16 with App Router and React 19.2
-- **Content**: Database-backed MDX with next-mdx-remote for compilation
-- **Database**: Neon PostgreSQL with Drizzle ORM
-- **Authentication**: Better Auth with OAuth providers (GitHub, Google)
-- **Cache**: Upstash Redis for analytics and caching
-- **Styling**: Tailwind CSS v4
-- **Testing**: Vitest with React Testing Library
-- **Code Quality**: Biome for linting/formatting, TypeScript strict mode
-- **Deployment**: Vercel with automated migrations
+- **Framework**: Next.js 16.0.0 with App Router and React 19.2.0
+- **Content**: Database-backed MDX with next-mdx-remote 5.0.0 for compilation
+- **Database**: Neon PostgreSQL (@neondatabase/serverless 0.10.4) with Drizzle ORM 0.38.3 and drizzle-kit 0.30.1
+- **Authentication**: Better Auth 1.3.28 with OAuth providers (GitHub, Google)
+- **Cache**: Upstash Redis 1.34.3 for analytics and caching
+- **API Layer**: tRPC 11.4.2 for type-safe API routes with @tanstack/react-query 5.81.2
+- **Data Fetching**: Apollo Client 3.12.2 for GraphQL queries (@octokit/rest 22.0.0 for GitHub API)
+- **Styling**: Tailwind CSS v4.0.14 (@tailwindcss/postcss 4.0.14) with Tailwind Typography 0.5.8
+- **UI Components**: Radix UI primitives, Lucide React 0.471.1 icons, Framer Motion 12.23.6, shadcn 3.4.2
+- **Testing**: Vitest 4.0.3 with React Testing Library 16.3.0 and @vitest/coverage-v8 4.0.3
+- **Code Quality**: Biome 2.2.6 for linting/formatting, TypeScript 5.2.2 strict mode, Husky 9.1.6 for git hooks, lint-staged 15.5.2
+- **Build Tool**: Turbo 2.6.1 for monorepo orchestration, Vite 7.1.12 for test bundling
+- **Deployment**: Vercel with automated migrations (@vercel/analytics 1.5.0, @vercel/speed-insights 1.2.0, @vercel/og 0.0.27)
+- **React Features**: React Compiler (babel-plugin-react-compiler 1.0.0)
 
 ### Key Features
 
@@ -92,13 +100,14 @@ This is a Turborepo monorepo containing a Next.js 16 portfolio website with an i
 
 ### Database Architecture
 
-- Schema in `apps/blog/src/schema/` using Drizzle ORM
+- **Schema Location**: `apps/blog/src/schema/` using Drizzle ORM 0.38.3
     - `posts.ts`: Blog posts with MDX content, metadata, tags, and publish status
     - `sessions.ts`: Session tracking for analytics (visits, geolocation, device info)
     - `auth.ts`: Better Auth authentication tables (users, accounts, sessions, verification)
-    - `index.ts`: Database client export
-- Configuration in `apps/blog/drizzle.config.ts`
-- Migrations in `apps/blog/migrations/` managed by drizzle-kit
+    - `index.ts`: Database client export (Neon serverless connection with WebSocket support)
+- **Configuration**: `apps/blog/drizzle.config.ts` (uses DATABASE_URL from env)
+- **Migrations**: `apps/blog/migrations/` managed by drizzle-kit 0.30.1
+- **Seeding**: `apps/blog/src/scripts/seed.ts` using drizzle-seed 0.3.1 (run with NODE_ENV=development)
 
 ### Analytics System
 
@@ -184,7 +193,94 @@ The service layer uses classes for better testability, dependency injection, and
 - Easy to unit test each layer independently
 - Reusable queries across multiple services
 - Business logic isolated from data access
-- Follows Next.js 15+ best practices (server actions for writes only)
+- Follows Next.js 16 best practices (server actions for writes only)
+
+### Caching Strategy
+
+The application uses a simplified two-layer caching approach optimised for low-traffic personal blogs:
+
+#### Layer 1: React cache() [Request-Level Deduplication]
+```typescript
+import { cache } from 'react';
+
+export const getPublishedPostBySlug = cache(async (slug: string) => {
+  return db.query.posts.findFirst(...);
+});
+```
+
+**Purpose**: Prevents duplicate database queries within a single HTTP request
+
+**Scope**: Per-request only (cache cleared after request completes)
+
+**Use Cases**:
+- `generateMetadata()` and page component both call same query
+- Multiple components render same data
+- Automatic deduplication with zero configuration
+
+**Performance Impact**: 5-15ms savings per duplicate query eliminated
+
+**All Query Functions Use React cache()**:
+- `getPostBySlug(slug)` - Single post tag lookup
+- `getPublishedPosts()` - All published posts
+- `getPublishedPostBySlug(slug)` - Single published post with author
+- `getPublishedPostSlugs()` - All published post slugs
+- `getPublishedPostsBySlugs(slugs[])` - Multiple posts by slug array
+- `getPostsWithOverlappingTags(tags[], excludeSlug)` - Related posts candidates
+
+#### Layer 2: Redis [Long-Lived Cross-Request Cache]
+```typescript
+// Example: Popular posts tracking
+await redis.zadd('posts:popular', viewCount, postSlug);
+const topPosts = await redis.zrange('posts:popular', 0, 4, { rev: true });
+```
+
+**Purpose**: Analytics tracking and expensive computations
+
+**Scope**: Cross-request (all users), persists until TTL expiration or manual invalidation
+
+**Use Cases**:
+- **Post Statistics** (1 hour TTL): View counts, like counts per post
+- **Popular Posts** (Persistent): Redis sorted set ranked by view count
+- **Related Posts** (24 hour TTL): Jaccard similarity calculations
+
+**Services**:
+- `CacheService` - Redis wrapper with graceful error handling
+- `PostStatsService` - View/like tracking with React cache() deduplication
+- `PopularPostsService` - Top posts by view count
+- `RelatedPostsCalculator` - Tag similarity with 24hr cache
+- `CacheInvalidationService` - Invalidates caches on post updates
+
+**Configuration**: `lib/config/cache.config.ts`
+- Popular posts: 5 items, fallback to 10 recent posts
+- Related posts: 4 items, 24hr TTL, 0.1 minimum similarity
+- Post stats: 1hr TTL
+
+#### Cache Strategy Rationale
+
+**Why This Approach**:
+- Optimised for low traffic (<100 views/day)
+- Simple to maintain (no complex invalidation logic)
+- Eliminates duplicate queries (React cache())
+- Handles analytics efficiently (Redis)
+- No cross-request component caching needed
+
+**What We Don't Use**:
+- ❌ Cache Components (`"use cache"` directive) - Disabled for simplicity
+  - Caused CPU overhead on Vercel
+  - Required manual cache invalidation
+  - Overkill for personal blog scale
+- ❌ `unstable_cache()` - Not needed for low traffic
+- ❌ ISR (Incremental Static Regeneration) - Blog routes are dynamic for analytics
+
+**Mental Model**:
+- React cache() = "Don't repeat work within same request"
+- Redis = "Track analytics and expensive calculations across requests"
+
+**Performance Characteristics**:
+- Database queries: 5-15ms (fast with Neon serverless)
+- MDX compilation: 50-200ms per request (acceptable for low traffic)
+- Redis operations: 5-20ms with Upstash edge network
+- Total page load: ~60-250ms for blog post pages
 
 ## Environment Variables
 
@@ -192,35 +288,35 @@ Required environment variables (see `apps/blog/.env.example`):
 
 ### Core Configuration
 
-- `NEXT_PUBLIC_BASE_URL` - Base URL for the application (e.g., http://localhost:3000)
+- `NEXT_PUBLIC_BASE_URL` - Base URL for the application (e.g., http://localhost:3000, https://ruchern.dev)
 
 ### Database
 
-- `DATABASE_URL` - Neon PostgreSQL connection string
+- `DATABASE_URL` - Neon PostgreSQL connection string (format: postgresql://user:password@host/database?sslmode=require)
 
 ### GitHub Integration
 
-- `GH_ACCESS_TOKEN` - GitHub personal access token for API access
+- `GH_ACCESS_TOKEN` - GitHub personal access token for API access (used by @octokit/rest)
 
 ### Redis (Upstash)
 
-- `UPSTASH_REDIS_REST_URL` - Upstash Redis REST URL
-- `UPSTASH_REDIS_REST_TOKEN` - Upstash Redis REST token
+- `UPSTASH_REDIS_REST_URL` - Upstash Redis REST API URL (e.g., https://xxx.upstash.io)
+- `UPSTASH_REDIS_REST_TOKEN` - Upstash Redis REST API token
 
 ### Analytics
 
-- `IP_SALT` - Salt for IP address hashing (privacy protection)
+- `IP_SALT` - Random salt string for IP address hashing (privacy protection, generate with: openssl rand -hex 32)
 
 ### Authentication (Better Auth)
 
-- `BETTER_AUTH_SECRET` - Secret key for Better Auth
-- `BETTER_AUTH_URL` - Base URL for auth callbacks (e.g., http://localhost:3000)
+- `BETTER_AUTH_SECRET` - Secret key for Better Auth (generate with: openssl rand -hex 32)
+- `BETTER_AUTH_URL` - Base URL for auth callbacks (http://localhost:3000 for dev, https://your-domain.com for production)
 
 ### OAuth Providers
 
-- `GITHUB_CLIENT_ID` - GitHub OAuth app client ID
+- `GITHUB_CLIENT_ID` - GitHub OAuth app client ID (create at: https://github.com/settings/developers)
 - `GITHUB_CLIENT_SECRET` - GitHub OAuth app client secret
-- `GOOGLE_CLIENT_ID` - Google OAuth app client ID
+- `GOOGLE_CLIENT_ID` - Google OAuth app client ID (create at: https://console.cloud.google.com)
 - `GOOGLE_CLIENT_SECRET` - Google OAuth app client secret
 
 ## Documentation & Learning Resources
@@ -249,6 +345,21 @@ examples. This is especially important for rapidly evolving libraries.
 3. For troubleshooting library-specific issues
 4. When learning best practices for library usage
 5. Before upgrading library versions
+
+**Installed Versions** (always check Context7 for version-specific docs):
+
+- Next.js 16.0.0 (with React Compiler enabled)
+- React 19.2.0 with React DOM 19.2.0
+- Drizzle ORM 0.38.3 with drizzle-kit 0.30.1
+- Better Auth 1.3.28
+- Tailwind CSS 4.0.14 with @tailwindcss/postcss 4.0.14
+- tRPC 11.4.2 with @tanstack/react-query 5.81.2
+- Vitest 4.0.3 with @vitest/coverage-v8 4.0.3
+- next-mdx-remote 5.0.0
+- Framer Motion 12.23.6
+- Lucide React 0.471.1
+- Upstash Redis 1.34.3
+- Apollo Client 3.12.2
 
 **How to Use**:
 
@@ -325,6 +436,17 @@ All blog content is managed through the database-backed Content Studio:
 - Protected routes using `(auth)` route group
 - Login page at `/login` with OAuth buttons
 - Session management and last login method tracking
+
+### Next.js Configuration
+
+The Next.js configuration (`apps/blog/next.config.ts`) includes:
+
+- **React Compiler**: Enabled via `reactCompiler: true` (babel-plugin-react-compiler 1.0.0)
+- **Turbopack**: File system caching enabled for dev (`turbopackFileSystemCacheForDev: true`)
+- **Strict Mode**: Enabled via `reactStrictMode: true`
+- **Image Optimization**: Remote patterns for GitHub avatars and Google profile pictures
+- **Security Headers**: HSTS, XSS Protection, X-Frame-Options, CSP, Referrer Policy, DNS Prefetch Control
+- **Logging**: Full URL logging for fetch requests (`logging.fetches.fullUrl: true`)
 
 ## Tailwind CSS Guidelines
 

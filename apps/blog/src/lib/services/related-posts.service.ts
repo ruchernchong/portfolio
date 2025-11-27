@@ -1,4 +1,3 @@
-import { cache } from "react";
 import { CacheConfig } from "@/lib/config/cache.config";
 import {
   getPostBySlug,
@@ -49,61 +48,59 @@ export class RelatedPostsCalculator {
    * @param limit - Maximum number of related posts to return
    * @returns Array of related posts sorted by similarity score
    */
-  getRelatedPosts = cache(
-    async (
-      slug: string,
-      limit: number = CacheConfig.RELATED_POSTS.LIMIT,
-    ): Promise<RelatedPost[]> => {
-      // Check cache first
-      const cached = await this.getCachedRelated(slug);
-      if (cached) return cached.slice(0, limit);
+  getRelatedPosts = async (
+    slug: string,
+    limit: number = CacheConfig.RELATED_POSTS.LIMIT,
+  ): Promise<RelatedPost[]> => {
+    // Check cache first
+    const cached = await this.getCachedRelated(slug);
+    if (cached) return cached.slice(0, limit);
 
-      // Fetch current post tags
-      const currentPost = await getPostBySlug(slug);
+    // Fetch current post tags
+    const currentPost = await getPostBySlug(slug);
 
-      if (!currentPost || !currentPost.tags.length) return [];
+    if (!currentPost || !currentPost.tags.length) return [];
 
-      // Find posts with overlapping tags
-      const relatedPosts = await getPostsWithOverlappingTags(
-        currentPost.tags,
-        slug,
-      );
+    // Find posts with overlapping tags
+    const relatedPosts = await getPostsWithOverlappingTags(
+      currentPost.tags,
+      slug,
+    );
 
-      // Calculate Jaccard similarity for each post
-      const withSimilarity = relatedPosts
-        .map((post) => {
-          const commonTags = post.tags.filter((tag) =>
-            currentPost.tags.includes(tag),
-          );
-          const similarity = this.calculateJaccardSimilarity(
-            currentPost.tags,
-            post.tags,
-          );
-
-          return {
-            slug: post.slug,
-            title: post.title,
-            summary: post.summary,
-            publishedAt: post.publishedAt,
-            commonTagCount: commonTags.length,
-            similarity,
-          };
-        })
-        .filter(
-          (post) => post.similarity >= CacheConfig.RELATED_POSTS.MIN_SIMILARITY,
+    // Calculate Jaccard similarity for each post
+    const withSimilarity = relatedPosts
+      .map((post) => {
+        const commonTags = post.tags.filter((tag) =>
+          currentPost.tags.includes(tag),
+        );
+        const similarity = this.calculateJaccardSimilarity(
+          currentPost.tags,
+          post.tags,
         );
 
-      // Sort by similarity and limit
-      const results = withSimilarity
-        .sort((a, b) => b.similarity - a.similarity)
-        .slice(0, limit);
+        return {
+          slug: post.slug,
+          title: post.title,
+          summary: post.summary,
+          publishedAt: post.publishedAt,
+          commonTagCount: commonTags.length,
+          similarity,
+        };
+      })
+      .filter(
+        (post) => post.similarity >= CacheConfig.RELATED_POSTS.MIN_SIMILARITY,
+      );
 
-      // Cache for 24 hours
-      await this.cacheRelated(slug, results);
+    // Sort by similarity and limit
+    const results = withSimilarity
+      .sort((a, b) => b.similarity - a.similarity)
+      .slice(0, limit);
 
-      return results;
-    },
-  );
+    // Cache for 24 hours
+    await this.cacheRelated(slug, results);
+
+    return results;
+  };
 
   /**
    * Calculate Jaccard similarity coefficient between two tag sets

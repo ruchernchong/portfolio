@@ -26,7 +26,8 @@ const sitemap = async (): Promise<MetadataRoute.Sitemap> => {
   ];
 };
 
-const formatLastModified = (datetime: Date | string = new Date()): string =>
-  new Date(datetime).toISOString().split("T")[0];
+const formatLastModified = (datetime: Date | string = new Date()): string => {
+  return new Date(datetime).toISOString().split("T")[0];
+};
 
 export default sitemap;

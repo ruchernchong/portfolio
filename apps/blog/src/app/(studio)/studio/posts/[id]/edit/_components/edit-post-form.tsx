@@ -42,7 +42,6 @@ interface EditPostFormProps {
 export const EditPostForm = ({ postId }: EditPostFormProps) => {
   const router = useRouter();
   const [post, setPost] = useState<Post | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
@@ -64,25 +63,29 @@ export const EditPostForm = ({ postId }: EditPostFormProps) => {
   const tagsId = useId();
   const coverImageId = useId();
 
-  const fetchPost = useEffectEvent(async (id: string) => {
+  const fetchPost = useEffectEvent((id: string) => {
     try {
-      const response = await fetch(`/api/studio/posts/${id}`);
-      if (!response.ok) throw new Error("Failed to fetch post");
-      const data = await response.json();
-      setPost(data);
-      setFormData({
-        title: data.title,
-        slug: data.slug,
-        summary: data.summary || "",
-        content: data.content,
-        status: data.status,
-        tags: Array.isArray(data.tags) ? data.tags.join(", ") : "",
-        coverImage: data.coverImage || "",
+      startTransition(async () => {
+        const response = await fetch(`/api/studio/posts/${id}`);
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch post");
+        }
+
+        const data = await response.json();
+        setPost(data);
+        setFormData({
+          title: data.title,
+          slug: data.slug,
+          summary: data.summary || "",
+          content: data.content,
+          status: data.status,
+          tags: Array.isArray(data.tags) ? data.tags.join(", ") : "",
+          coverImage: data.coverImage || "",
+        });
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load post");
-    } finally {
-      setIsLoading(false);
     }
   });
 
@@ -177,7 +180,7 @@ export const EditPostForm = ({ postId }: EditPostFormProps) => {
     });
   };
 
-  if (isLoading) {
+  if (isPending) {
     return (
       <div className="mx-auto max-w-4xl">
         <Card>

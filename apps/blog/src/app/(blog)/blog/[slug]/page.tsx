@@ -5,8 +5,10 @@ import {
 } from "@heroicons/react/24/outline";
 import { format, formatISO } from "date-fns";
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
-import { cache, cacheSignal } from "react";
+import { connection } from "next/server";
+import { Suspense } from "react";
 import { StructuredData } from "@/app/(blog)/_components/structured-data";
 import StatsBar from "@/app/(blog)/analytics/_components/stats-bar";
 import { Mdx } from "@/app/(blog)/blog/_components/mdx";
@@ -16,32 +18,22 @@ import {
   getPublishedPostBySlug,
   getPublishedPostSlugs,
 } from "@/lib/queries/posts";
+import { generateUserHash } from "@/utils/hash";
 
-type Params = Promise<{ slug: string }>;
+interface Props {
+  params: Promise<{ slug: string }>;
+}
 
-// Cached post fetching with cacheSignal for cleanup
-const getPost = cache(async (slug: string) => {
-  const signal = cacheSignal();
+interface CachedPostContentProps {
+  slug: string;
+  userHash: string;
+}
 
-  // Fetch post using query function
+export const generateMetadata = async ({
+  params,
+}: Props): Promise<Metadata> => {
+  const { slug } = await params;
   const post = await getPublishedPostBySlug(slug);
-
-  // Listen for cache expiration to perform cleanup if needed
-  if (signal) {
-    signal.addEventListener("abort", () => {
-      // Cache lifetime ended - cleanup resources if needed
-      console.log(`[cacheSignal] Cache expired for post: ${slug}`);
-    });
-  }
-
-  return post;
-});
-
-export const generateMetadata = async (props: {
-  params: Params;
-}): Promise<Metadata> => {
-  const params = await props.params;
-  const post = await getPost(params.slug);
 
   if (!post) {
     notFound();
@@ -64,10 +56,32 @@ export const generateStaticParams = async () => {
   return publishedPosts.map(({ slug }) => ({ slug }));
 };
 
-const PostPage = async (props: { params: Params }) => {
-  const params = await props.params;
-  // Use cached getPost - deduplicates with generateMetadata call
-  const post = await getPost(params.slug);
+const PostPage = async ({ params }: Props) => {
+  return (
+    <Suspense fallback={null}>
+      <Content params={params} />
+    </Suspense>
+  );
+};
+
+const Content = async ({ params }: Props) => {
+  await connection();
+
+  const { slug } = await params;
+  const headersList = await headers();
+  const forwardedFor = headersList.get("x-forwarded-for");
+  const realIp = headersList.get("x-real-ip");
+  const ipAddress = forwardedFor?.split(",")[0] ?? realIp ?? "127.0.0.1";
+  const userHash = generateUserHash(ipAddress);
+
+  return <CachedPostContent slug={slug} userHash={userHash} />;
+};
+
+const CachedPostContent = async ({
+  slug,
+  userHash,
+}: CachedPostContentProps) => {
+  const post = await getPublishedPostBySlug(slug);
 
   if (!post || !post.publishedAt) {
     return notFound();
@@ -80,7 +94,9 @@ const PostPage = async (props: { params: Params }) => {
       <StructuredData data={post.metadata.structuredData} />
       <article className="prose prose-invert mx-auto mb-16 max-w-4xl prose-img:rounded-2xl prose-a:text-pink-500">
         <div className="flex flex-col items-center gap-y-4 text-center">
-          <StatsBar slug={post.slug} />
+          <Suspense fallback={null}>
+            <StatsBar slug={post.slug} userHash={userHash} />
+          </Suspense>
           <div className="flex gap-x-2 text-zinc-400 md:flex-row">
             <div className="flex items-center justify-center gap-x-2">
               <CalendarDaysIcon className="h-6 w-6" />

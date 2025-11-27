@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "@heroui/react";
+import { Button } from "@heroui/button";
 import Link from "next/link";
 import { ExperienceCard } from "@/app/(blog)/about/_components/experience-card";
 import { LocationCard } from "@/app/(blog)/about/_components/location-card";

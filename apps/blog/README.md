@@ -17,19 +17,25 @@ This portfolio is built with modern web technologies:
 
 ### Styling & UI
 
-- **Tailwind CSS v4** - Utility-first CSS framework
-- **Tailwind Typography** - Beautiful typographic defaults
-- **Lucide React** - Beautiful & consistent icons
-- **Class Variance Authority** - Component variants
+- **Tailwind CSS v4.0.14** - Utility-first CSS framework with @tailwindcss/postcss 4.0.14
+- **Tailwind Typography 0.5.8** - Beautiful typographic defaults
+- **Lucide React 0.471.1** - Beautiful & consistent icons
+- **Radix UI** - Unstyled accessible component primitives (Alert Dialog, Checkbox, Label, Select, Separator, Slot, Scroll Area)
+- **Class Variance Authority 0.7.1** - Component variants
+- **Framer Motion 12.23.6** - Animation library
+- **next-themes 0.4.6** - Dark mode support
+- **shadcn 3.4.2** - UI component collection
 
 ### Content & Data
 
-- **Database-backed MDX** - next-mdx-remote for MDX compilation
-- **MDX** - Markdown with JSX components
-- **Neon PostgreSQL** - Serverless Postgres database
-- **Drizzle ORM** - Type-safe database toolkit
-- **Upstash Redis** - Serverless Redis for caching
-- **Better Auth** - Authentication with OAuth providers (GitHub, Google)
+- **Database-backed MDX** - next-mdx-remote 5.0.0 for MDX compilation with rehype/remark plugins
+- **Neon PostgreSQL** - Serverless Postgres database (@neondatabase/serverless 0.10.4)
+- **Drizzle ORM 0.38.3** - Type-safe database toolkit with drizzle-kit 0.30.1
+- **Upstash Redis 1.34.3** - Serverless Redis for caching and analytics
+- **Better Auth 1.3.28** - Authentication with OAuth providers (GitHub, Google)
+- **tRPC 11.4.2** - End-to-end type-safe API layer with @tanstack/react-query 5.81.2
+- **Apollo Client 3.12.2** - GraphQL client for data fetching
+- **Octokit REST 22.0.0** - GitHub API integration
 
 ### Analytics & Monitoring
 
@@ -39,27 +45,37 @@ This portfolio is built with modern web technologies:
 
 ### Development & Testing
 
-- **Vitest** - Fast unit testing framework
-- **Testing Library** - React component testing
-- **Biome** - Fast linting and formatting
-- **TypeScript** - Strict mode type checking
-- **Husky** - Git hooks
+- **Vitest 4.0.3** - Fast unit testing framework with @vitest/coverage-v8 4.0.3
+- **Testing Library 16.3.0** - React component testing (@testing-library/react, @testing-library/jest-dom, @testing-library/user-event)
+- **Biome 2.2.6** - Fast linting and formatting (replaces ESLint + Prettier)
+- **TypeScript 5.2.2** - Strict mode type checking with path aliases
+- **Husky 9.1.6** - Git hooks for commit quality
+- **lint-staged 15.5.2** - Run linters on staged files
+- **Turbo 2.6.1** - Monorepo build orchestration with TUI
+- **Vite 7.1.12** - Fast build tool for testing
+- **tsx 4.20.6** - TypeScript execution for scripts
 
 ### Deployment & Infrastructure
 
-- **Vercel** - Deployment platform (Singapore region)
-- **GitHub Actions** - CI/CD workflows
+- **Vercel** - Deployment platform with automated migrations
+- **Vercel Analytics 1.5.0** - Web vitals and performance monitoring
+- **Vercel Speed Insights 1.2.0** - Real user monitoring
+- **Vercel OG 0.0.27** - Dynamic OpenGraph image generation
+- **Vercel Functions 1.6.0** - Serverless function runtime
+- **semantic-release 25.0.1** - Automated versioning and changelog with conventional commits
+- **commitlint 19.8.1** - Enforce conventional commit messages
+- **Husky** - Pre-commit hooks for code quality
 
 ## 🛠️ Getting Started
 
 ### Prerequisites
 
-- **Node.js 18.x or higher** - JavaScript runtime (tested with v22.20.0)
-- **pnpm 10.2.0 or higher** - Fast, disk space efficient package manager
+- **Node.js 18.x or higher** - JavaScript runtime (recommended: v22+)
+- **pnpm 10.22.0** - Fast, disk space efficient package manager (exact version required)
 - **Git** - Version control system
-- **Neon PostgreSQL database** - Serverless database (sign up at [neon.tech](https://neon.tech))
-- **Upstash Redis** - Serverless Redis (sign up at [upstash.com](https://upstash.com))
-- **GitHub/Google OAuth apps** - For authentication (optional, for `/studio` CMS access)
+- **Neon PostgreSQL database** - Serverless Postgres (sign up at [neon.com](https://neon.com))
+- **Upstash Redis** - Serverless Redis for caching (sign up at [upstash.com](https://upstash.com))
+- **GitHub/Google OAuth apps** - For authentication (optional, required for `/studio` CMS access)
 
 ### Installation
 
@@ -129,11 +145,13 @@ If you've configured OAuth providers, you can access the Content Studio at `http
 
 #### Development (run from project root)
 ```bash
-pnpm dev              # Start development server with hot reload
+pnpm dev              # Start dev server with hot reload + Drizzle Studio
 pnpm build            # Build all apps for production
 pnpm start            # Start production server
 pnpm test             # Run tests across all apps
-pnpm lint             # Run linting across all apps
+pnpm test:coverage    # Generate coverage reports
+pnpm lint             # Run linting across all apps with Biome
+pnpm format           # Format code with Biome
 ```
 
 #### Database Management (run from project root)
@@ -147,8 +165,7 @@ pnpm db:seed          # Seed database with test data
 
 #### Quality & Release
 ```bash
-pnpm release          # Create semantic release (runs build, test, lint, check-types)
-pnpm release:blog     # Release blog app specifically
+pnpm release          # Create semantic release with conventional commits
 ```
 
 For more commands, see the [CLAUDE.md](CLAUDE.md) file.
@@ -161,10 +178,13 @@ For more commands, see the [CLAUDE.md](CLAUDE.md) file.
 
 ### Code Style
 
-- **TypeScript**: Strict mode enabled with path aliases (`@/*`)
+- **Language**: English (Singapore) for all content and documentation
+- **TypeScript**: Strict mode enabled with path aliases (`@/*` → `apps/blog/src`)
 - **File Naming**: kebab-case for filenames
 - **Components**: Functional components with hooks
 - **Exports**: Named exports preferred over default exports
+- **Linting**: Biome handles both linting and formatting
+- **Commits**: Conventional commits enforced via commitlint + Husky
 
 
 ## 📁 Project Structure
@@ -195,8 +215,7 @@ portfolio/
 │       │   └── utils/         # Helper functions with tests
 │       ├── migrations/        # Database migration files
 │       └── drizzle.config.ts  # Drizzle configuration
-├── packages/                  # Shared packages (currently empty)
-└── turbo.json                # Turborepo configuration
+└── turbo.json                # Turborepo task orchestration
 ```
 
 ## 🏗️ Architecture
@@ -269,26 +288,27 @@ REDIS_KEYS: {
 
 The codebase follows a **3-layer architecture** for separation of concerns:
 
-1. **Database Layer** (`lib/queries/`) - Pure Drizzle ORM queries, no business logic
-2. **Service Layer** (`lib/services/`) - Business logic, caching, data transformations
-3. **Action Layer** (`app/(blog)/_actions/`) - Server actions for mutations only
+1. **Database Layer** (`lib/queries/`) - Pure Drizzle ORM queries with zero business logic
+2. **Service Layer** (`lib/services/`) - Business logic, caching, Redis operations, data transformations
+3. **Action Layer** (`app/(blog)/_actions/`) - React Server Actions for mutations only (no reads)
 
 ## 🎯 Key Features
 
-- **📝 Blog System**: MDX-powered blog with syntax highlighting
-- **✏️ Content Studio**: Web-based CMS at `/studio` for managing blog posts
-- **🔥 Popular Posts**: Real-time view tracking with Redis sorted sets, showing top posts by popularity
-- **🔗 Related Posts**: Smart tag-based recommendations using Jaccard similarity algorithm with Redis caching
-- **🔐 Authentication**: OAuth login with GitHub and Google via Better Auth
-- **📊 Analytics Dashboard**: Custom privacy-focused visitor analytics
+- **📝 Blog System**: Database-backed MDX with syntax highlighting via Shiki 1.29.2 and next-mdx-remote 5.0.0
+- **✏️ Content Studio**: Web-based CMS at `/studio` for managing blog posts (requires OAuth login)
+- **🔥 Popular Posts**: Real-time view tracking with Redis sorted sets (top 5 posts by view count)
+- **🔗 Related Posts**: Smart tag-based recommendations using Jaccard similarity algorithm (24hr Redis cache)
+- **🔐 Authentication**: Better Auth 1.3.28 with GitHub and Google OAuth providers
+- **📊 Analytics Dashboard**: Custom privacy-focused visitor analytics (IP hashing, geolocation with ua-parser-js 2.0.0, device detection)
 - **🤖 LLM SEO**: Dynamic `/llms.txt` endpoint for AI crawler discovery (llmstxt.org standard)
-- **📡 RSS Feed**: Auto-generated `/feed.xml` with latest posts
-- **🎨 Dark/Light Mode**: Tailwind CSS theming support
-- **📱 Responsive Design**: Mobile-first responsive layout
-- **🔍 SEO Optimized**: Structured data, sitemaps, and meta tags
-- **⚡ Performance**: Optimized images, caching, and core web vitals
-- **🔒 Privacy-First**: IP hashing and minimal data collection
-- **🚀 Modern Stack**: Latest Next.js 16, React 19.2, and TypeScript features
+- **📡 RSS Feed**: Auto-generated `/feed.xml` route handler with latest published posts (RSS 1.2.2)
+- **🎨 Dark/Light Mode**: next-themes 0.4.6 with Tailwind CSS theming and next-view-transitions 0.3.4
+- **📱 Responsive Design**: Mobile-first responsive layout with Tailwind CSS v4 and react-resizable-panels 3.0.6
+- **🔍 SEO Optimized**: Structured data (schema-dts 1.1.2), dynamic sitemaps, OpenGraph image generation (@vercel/og 0.0.27)
+- **⚡ Performance**: Sharp 0.34.1 image optimization, Redis caching, React Compiler (babel-plugin-react-compiler 1.0.0), Cache Components mode
+- **🔒 Privacy-First**: IP address hashing with salt, minimal PII collection, GDPR-friendly analytics
+- **🚀 Modern Stack**: Next.js 16.0.0, React 19.2.0, TypeScript 5.2.2 strict mode, tRPC 11.4.2
+- **🧪 Testing**: 57+ unit tests with Vitest 4.0.3 and Testing Library 16.3.0
 
 ## 🤝 Contributing
 

@@ -1,8 +1,8 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Link } from "next-view-transitions";
 import type { PropsWithChildren } from "react";
 import Icon from "@/app/(blog)/icon.png";
 import { navLinks } from "@/config";

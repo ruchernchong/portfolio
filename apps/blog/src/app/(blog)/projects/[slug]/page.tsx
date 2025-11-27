@@ -7,6 +7,7 @@ import { ProjectDetail } from "@/app/(blog)/projects/_components/project-detail"
 import { openGraphImage, twitterImage } from "@/app/(blog)/shared-metadata";
 import { PageTitle } from "@/components/shared/page-title";
 import { BASE_URL } from "@/config";
+import projects from "@/data/projects";
 import { getProjectBySlug } from "@/utils/get-project-by-slug";
 
 interface Props {
@@ -47,6 +48,10 @@ export const generateMetadata = async ({
       canonical,
     },
   };
+};
+
+export const generateStaticParams = async () => {
+  return projects.map((project) => ({ slug: project.slug }));
 };
 
 const ProjectPage = async ({ params }: Props) => {

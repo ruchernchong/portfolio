@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Geist } from "next/font/google";
-import { ViewTransitions } from "next-view-transitions";
-import type { ReactNode } from "react";
+import { type ReactNode, Suspense } from "react";
 import { Providers } from "@/app/(studio)/providers";
 import { UserMenu } from "@/components/auth/user-menu";
 import { cn } from "@/lib/utils";
@@ -18,7 +17,9 @@ export const metadata: Metadata = {
   },
 };
 
-const StudioLayout = ({ children }: Readonly<{ children: ReactNode }>) => {
+const StudioLayout = async ({
+  children,
+}: Readonly<{ children: ReactNode }>) => {
   return (
     <html
       lang="en"
@@ -26,19 +27,19 @@ const StudioLayout = ({ children }: Readonly<{ children: ReactNode }>) => {
       suppressHydrationWarning
     >
       <body className="bg-zinc-50 text-zinc-900" suppressHydrationWarning>
-        <ViewTransitions>
-          <Providers>
-            <div className="min-h-screen">
-              <header className="border-b bg-white">
-                <div className="container mx-auto flex items-center justify-between px-4 py-4">
-                  <h1 className="font-bold text-xl">Content Studio</h1>
+        <Providers>
+          <div className="min-h-screen">
+            <header className="border-b bg-white">
+              <div className="container mx-auto flex items-center justify-between px-4 py-4">
+                <h1 className="font-bold text-xl">Content Studio</h1>
+                <Suspense fallback={null}>
                   <UserMenu />
-                </div>
-              </header>
-              <main className="container mx-auto px-4 py-8">{children}</main>
-            </div>
-          </Providers>
-        </ViewTransitions>
+                </Suspense>
+              </div>
+            </header>
+            <main className="container mx-auto px-4 py-8">{children}</main>
+          </div>
+        </Providers>
       </body>
     </html>
   );

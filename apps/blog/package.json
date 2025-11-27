@@ -1,6 +1,6 @@
 {
   "name": "@ruchernchong/portfolio",
-  "version": "1.10.2",
+  "version": "1.11.0",
   "type": "module",
   "private": true,
   "scripts": {
@@ -11,6 +11,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "lint": "biome check",
+    "format": "biome format --write",
     "drop": "drizzle-kit drop",
     "generate": "drizzle-kit generate",
     "migrate": "drizzle-kit migrate",

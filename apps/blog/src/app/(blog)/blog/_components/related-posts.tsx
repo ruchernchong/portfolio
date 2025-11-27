@@ -16,14 +16,18 @@ interface RelatedPostsProps {
 export const RelatedPosts = async ({ slug }: RelatedPostsProps) => {
   const relatedPosts = await relatedPostsCalculator.getRelatedPosts(slug, 4);
 
-  if (!relatedPosts.length) return null;
+  if (!relatedPosts.length) {
+    return null;
+  }
 
   return (
     <div className="not-prose mt-12 flex flex-col gap-8">
       <h2 className="font-bold text-2xl text-pink-500">Related Articles</h2>
       <div className="grid gap-4 md:grid-cols-2">
         {relatedPosts.map((post) => {
-          if (!post.publishedAt) return null;
+          if (!post.publishedAt) {
+            return null;
+          }
 
           const formattedDate = format(post.publishedAt, "dd MMM yyyy");
 

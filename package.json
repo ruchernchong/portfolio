@@ -1,6 +1,6 @@
 {
   "name": "portfolio",
-  "version": "1.10.2",
+  "version": "1.11.0",
   "scripts": {
     "dev": "turbo dev studio",
     "build": "turbo build",
@@ -9,6 +9,7 @@
     "test:coverage": "turbo test:coverage",
     "lint": "turbo lint",
     "lint:blog": "turbo @ruchernchong/portfolio#lint",
+    "format": "turbo run format",
     "db:drop": "turbo @ruchernchong/portfolio#drop",
     "db:generate": "turbo @ruchernchong/portfolio#generate",
     "db:migrate": "turbo @ruchernchong/portfolio#migrate",
@@ -34,7 +35,7 @@
     "conventional-changelog-conventionalcommits": "^9.1.0",
     "husky": "^9.1.6",
     "semantic-release": "^25.0.1",
-    "turbo": "^2.5.8"
+    "turbo": "^2.6.1"
   },
-  "packageManager": "pnpm@10.2.0"
+  "packageManager": "pnpm@10.22.0"
 }

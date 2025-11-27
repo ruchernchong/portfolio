@@ -1,5 +1,5 @@
 import { MapPinIcon } from "@heroicons/react/24/outline";
-import { Card, CardBody, CardHeader } from "@heroui/react";
+import { Card, CardBody, CardHeader } from "@heroui/card";
 import { Globe } from "@/app/(blog)/about/_components/globe";
 
 export const LocationCard = () => (
