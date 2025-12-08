@@ -48,7 +48,7 @@ jobs:
           version: 10.2.0
 
       - name: Setup Node.js
-        uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # v4
+        uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v4
         with:
           node-version: 'lts/*'
           cache: 'pnpm'
@@ -86,7 +86,7 @@ jobs:
           version: 10.2.0
 
       - name: Setup Node.js
-        uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # v4
+        uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v4
         with:
           node-version: 'lts/*'
           cache: 'pnpm'
