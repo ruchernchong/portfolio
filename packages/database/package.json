@@ -22,7 +22,7 @@
     "db:check": "drizzle-kit check",
     "db:up": "drizzle-kit up",
     "db:studio": "drizzle-kit studio",
-    "db:seed": "NODE_ENV=development tsx src/scripts/seed.ts"
+    "db:seed": "node src/scripts/seed.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "^0.10.4",
@@ -30,6 +30,6 @@
     "drizzle-orm": "^0.38.3"
   },
   "devDependencies": {
-    "typescript": "^5.2.2"
+    "typescript": "^5.9.3"
   }
 }

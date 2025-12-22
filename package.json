@@ -15,8 +15,8 @@
     "db:generate": "turbo run db:generate",
     "db:migrate": "turbo run db:migrate",
     "db:push": "turbo run db:push",
-    "db:studio": "pnpm db:studio",
-    "db:seed": "pnpm db:seed",
+    "db:studio": "turbo run db:studio",
+    "db:seed": "turbo run db:seed",
     "mcp": "turbo run mcp",
     "prepare": "husky",
     "release": "semantic-release"
