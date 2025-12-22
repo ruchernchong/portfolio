@@ -1,10 +1,10 @@
 {
   "compilerOptions": {
+    "baseUrl": ".",
     "target": "ESNext",
     "lib": ["DOM", "DOM.Iterable", "ESNext"],
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "jsx": "react-jsx",
     "strict": true,
     "noEmit": true,
     "isolatedModules": true,
@@ -13,24 +13,12 @@
     "resolveJsonModule": true,
     "verbatimModuleSyntax": true,
     "incremental": true,
-    "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
-    },
-    "plugins": [
-      {
-        "name": "next"
-      }
-    ],
-    "types": ["vitest/globals"],
-    "allowJs": true
+      "@web/*": ["apps/web/src/*"],
+      "@database/*": ["packages/database/src/*"],
+      "@mcp/*": ["packages/mcp/src/*"]
+    }
   },
-  "include": [
-    "next-env.d.ts",
-    ".next/types/**/*.ts",
-    "**/*.ts",
-    "**/*.tsx",
-    ".next/dev/types/**/*.ts"
-  ],
-  "exclude": ["node_modules", "src/mcp"]
+  "include": ["**/*.ts", "**/*.tsx"],
+  "exclude": ["node_modules"]
 }

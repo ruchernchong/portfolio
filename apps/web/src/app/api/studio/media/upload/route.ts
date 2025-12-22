@@ -1,0 +1,37 @@
+import { ERROR_IDS } from "@web/constants/error-ids";
+import {
+  handleApiError,
+  parseAndValidateBody,
+  requireAuth,
+} from "@web/lib/api";
+import { mediaService } from "@web/lib/services";
+import { requestUploadSchema } from "@web/types/api";
+import { NextResponse } from "next/server";
+
+export const POST = async (request: Request) => {
+  const authResult = await requireAuth("upload media");
+  if (!authResult.success) return authResult.response;
+
+  const bodyResult = await parseAndValidateBody(request, requestUploadSchema);
+  if (!bodyResult.success) return bodyResult.response;
+
+  try {
+    const result = await mediaService.requestUpload(bodyResult.data);
+    return NextResponse.json(result);
+  } catch (error) {
+    if (error instanceof Error && error.message.includes("Invalid file type")) {
+      return NextResponse.json({ message: error.message }, { status: 400 });
+    }
+
+    if (error instanceof Error && error.message.includes("File too large")) {
+      return NextResponse.json({ message: error.message }, { status: 400 });
+    }
+
+    return handleApiError(
+      error,
+      ERROR_IDS.UPLOAD_REQUEST_FAILED,
+      "generate upload URL",
+      { filename: bodyResult.data.filename },
+    );
+  }
+};
