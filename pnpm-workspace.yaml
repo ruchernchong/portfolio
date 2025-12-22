@@ -1,0 +1,7 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+
+catalog:
+  drizzle-kit: ^0.31.8
+  zod: ^4.2.1
