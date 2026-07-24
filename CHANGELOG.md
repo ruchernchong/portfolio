@@ -1,3 +1,10 @@
+## [1.29.1](https://github.com/ruchernchong/blog/compare/v1.29.0...v1.29.1) (2026-07-24)
+
+### Bug Fixes
+
+* add missing model registry table migration ([25f5fe4](https://github.com/ruchernchong/blog/commit/25f5fe4693f5ec118bccf50ba68a94ef11ac36c8)), closes [#340](https://github.com/ruchernchong/blog/issues/340)
+* revalidate display-name cache after usage ingest ([ae1314c](https://github.com/ruchernchong/blog/commit/ae1314c5e3f27f58e7cfab990560db099c8e6d70)), closes [#340](https://github.com/ruchernchong/blog/issues/340)
+
 ## [1.29.0](https://github.com/ruchernchong/blog/compare/v1.28.0...v1.29.0) (2026-07-18)
 
 ### Features
