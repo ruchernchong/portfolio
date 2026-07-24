@@ -24,8 +24,9 @@ import {
  * open, so a plain authenticated session is not enough to overwrite prod data).
  * After the upsert, every still-`NULL`-cost row is repriced from its stored
  * tokens (healing stale orphans whose source log was pruned, so re-ingesting can
- * no longer reach them), then the `usage` cache tag is revalidated so the public
- * `/usage` page reflects the new data.
+ * no longer reach them), then the `usage` and `models:providers` cache tags are
+ * revalidated so the public `/usage` page reflects both the new data and any
+ * display names the registry sync just learned.
  */
 export async function POST(request: Request) {
   const auth = await validateMcpAuth(request);
@@ -62,6 +63,11 @@ export async function POST(request: Request) {
       });
     }
     revalidateTag("usage", "max");
+    // `syncModelRegistry` above is also what supplies model/provider display
+    // names, which are cached separately under `models:providers` with a
+    // multi-day life. Without this the page would show refreshed costs beside
+    // stale (or, on a first sync, empty) names for up to that whole window.
+    revalidateTag("models:providers", "max");
     return Response.json({ ok: true, upserted, repriced });
   } catch (error) {
     return handleApiError(
