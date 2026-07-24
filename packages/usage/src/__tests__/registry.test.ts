@@ -1,11 +1,9 @@
 import {
   bareSlug,
   type ModelEntry,
-  matchSlug,
   mergeRegistry,
   normaliseLiteLLM,
   normaliseModelsDev,
-  normaliseOpenRouter,
 } from "../registry";
 
 describe("normaliseModelsDev", () => {
@@ -102,46 +100,6 @@ describe("normaliseLiteLLM", () => {
         },
       }),
     ).toEqual([]);
-  });
-});
-
-describe("normaliseOpenRouter", () => {
-  it("should split the id, convert per-token pricing, and derive release date", () => {
-    const [entry] = normaliseOpenRouter({
-      data: [
-        {
-          id: "anthropic/claude-sonnet-5",
-          name: "Anthropic: Claude Sonnet 5",
-          created: 1_782_843_083,
-          context_length: 1_000_000,
-          pricing: {
-            prompt: "0.000003",
-            completion: "0.000015",
-            input_cache_read: "0.0000003",
-          },
-        },
-      ],
-    });
-    expect(entry).toMatchObject({
-      provider: "anthropic",
-      id: "claude-sonnet-5",
-      displayName: "Anthropic: Claude Sonnet 5",
-      contextLimit: 1_000_000,
-      rate: { input: 3, output: 15, cacheRead: 0.3, cacheWrite: 0 },
-      source: "openrouter",
-    });
-    expect(entry.releaseDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-  });
-});
-
-describe("matchSlug", () => {
-  it("should match exact, then case-insensitive, then bare slug", () => {
-    expect(matchSlug("gpt-5.6", ["gpt-5.6"])).toBe("gpt-5.6");
-    expect(matchSlug("gpt-5.6", ["GPT-5.6"])).toBe("GPT-5.6");
-    expect(matchSlug("claude-sonnet-5", ["anthropic.claude-sonnet-5"])).toBe(
-      "anthropic.claude-sonnet-5",
-    );
-    expect(matchSlug("missing", ["gpt-5.6"])).toBeUndefined();
   });
 });
 

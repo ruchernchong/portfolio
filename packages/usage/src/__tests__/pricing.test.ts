@@ -138,6 +138,25 @@ describe("buildPricingFromRegistry", () => {
     ).toBeNull();
   });
 
+  it("should not borrow another provider's rate for the same model id", () => {
+    // gpt-5-codex is priced under openai only. Lookups are provider-scoped, so
+    // it must not resolve under a provider that does not list it — the same
+    // slug is routinely a different price from a different vendor.
+    expect(pricing.priceFor("gpt-5-codex", { provider: "openai" })?.input).toBe(
+      1.25,
+    );
+    expect(
+      pricing.priceFor("gpt-5-codex", { provider: "fireworks-ai" }),
+    ).toBeNull();
+  });
+
+  it("should return null when the provider cannot be resolved", () => {
+    expect(pricing.priceFor("gpt-5-codex")).toBeNull();
+    expect(
+      pricing.priceFor("gpt-5-codex", { agent: "unknown-agent" }),
+    ).toBeNull();
+  });
+
   it("should return null for an unpriceable model", () => {
     expect(pricing.priceFor("ghost-model", { provider: "openai" })).toBeNull();
     expect(

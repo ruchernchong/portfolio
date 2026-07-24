@@ -3,13 +3,13 @@ import type { ModelRate } from "./pricing";
 /**
  * Pure, network-free model-registry layer.
  *
- * Each pricing/metadata source (LiteLLM, models.dev, OpenRouter, or a curated
- * DB override) is normalised into a common {@link ModelEntry}, then merged by
- * precedence into the rows that back the `model` table and, in turn, pricing.
+ * Each pricing/metadata source (LiteLLM, models.dev, or a curated DB override)
+ * is normalised into a common {@link ModelEntry}, then merged by precedence
+ * into the rows that back the `model` table and, in turn, pricing.
  *
  * Precedence, applied field-by-field:
  *   - rates:                override > LiteLLM > models.dev
- *   - names / release date / context limit: override > models.dev (> OpenRouter)
+ *   - names / release date / context limit: override > models.dev
  *
  * LiteLLM has the broadest, freshest pricing but no display names, so it leads
  * on rates; models.dev supplies the names/release dates LiteLLM lacks and fills
@@ -273,75 +273,6 @@ export function normaliseLiteLLM(table: LiteLLMTable): ModelEntry[] {
     });
   }
   return [...seen.values()];
-}
-
-// --- OpenRouter (pluggable alternative, not wired by default) ---------------
-
-interface OpenRouterPricing {
-  prompt?: string;
-  completion?: string;
-  input_cache_read?: string;
-  input_cache_write?: string;
-}
-interface OpenRouterModel {
-  id: string;
-  canonical_slug?: string;
-  name?: string;
-  created?: number;
-  context_length?: number;
-  pricing?: OpenRouterPricing;
-}
-export interface OpenRouterApi {
-  data: OpenRouterModel[];
-}
-
-const perTokenStr = (v?: string): number | undefined =>
-  v == null ? undefined : Number(v) * 1_000_000;
-
-export function normaliseOpenRouter(api: OpenRouterApi): ModelEntry[] {
-  const entries: ModelEntry[] = [];
-  for (const model of api.data ?? []) {
-    const slash = model.id.indexOf("/");
-    const provider = slash > 0 ? model.id.slice(0, slash) : "unknown";
-    const id = slash > 0 ? model.id.slice(slash + 1) : model.id;
-    const input = perTokenStr(model.pricing?.prompt);
-    const output = perTokenStr(model.pricing?.completion);
-    entries.push({
-      provider,
-      id,
-      displayName: model.name,
-      rate:
-        input != null && output != null
-          ? {
-              input,
-              output,
-              cacheRead: perTokenStr(model.pricing?.input_cache_read) ?? 0,
-              cacheWrite: perTokenStr(model.pricing?.input_cache_write) ?? 0,
-            }
-          : undefined,
-      contextLimit: model.context_length,
-      releaseDate: model.created
-        ? new Date(model.created * 1000).toISOString().slice(0, 10)
-        : undefined,
-      source: "openrouter",
-    });
-  }
-  return entries;
-}
-
-// --- Slug matching ---------------------------------------------------------
-
-/**
- * Reconcile a log's model id against a source's (possibly messier) key set:
- * exact, then case-insensitive, then the bare slug after the last separator.
- * Returns the matching key, or undefined.
- */
-export function matchSlug(target: string, keys: string[]): string | undefined {
-  if (keys.includes(target)) return target;
-  const lower = target.toLowerCase();
-  const ci = keys.find((k) => k.toLowerCase() === lower);
-  if (ci) return ci;
-  return keys.find((k) => bareSlug(k).toLowerCase() === lower);
 }
 
 // --- Merge -----------------------------------------------------------------

@@ -10,16 +10,9 @@ import type {
   YearSummary,
 } from "@workspace/usage/types";
 import { addDays, differenceInCalendarDays, format, parseISO } from "date-fns";
-import {
-  and,
-  asc,
-  eq,
-  getTableColumns,
-  isNull,
-  type SQL,
-  sql,
-} from "drizzle-orm";
+import { and, asc, eq, isNull, sql } from "drizzle-orm";
 import { cacheLife, cacheTag } from "next/cache";
+import { excludedColumns } from "@/lib/queries/upsert";
 import { db, type InsertTokenUsage, tokenUsage } from "@/schema";
 
 /** Postgres caps bound parameters per statement; chunk large upserts under it. */
@@ -49,33 +42,6 @@ const UPDATE_COLUMNS = [
 ] as const satisfies (keyof typeof tokenUsage.$inferInsert)[];
 
 /**
- * Mirror the Drizzle `casing: "snake_case"` config (see `drizzle.config.ts`).
- * Columns are declared without explicit DB names, so `Column.name` holds the
- * camelCase property key and the snake_case mapping is applied only at
- * query-build time — it is *not* available on the column object. The `excluded.`
- * pseudo-row in an upsert needs the real DB column name, so convert it here.
- */
-function toSnakeCase(name: string): string {
-  return name.replace(/[A-Z]/g, (char) => `_${char.toLowerCase()}`);
-}
-
-/**
- * Build the `onConflictDoUpdate` set object from the table definition, pointing
- * each column at its `excluded` (incoming) value, so the column list is never
- * hand-written. See the Drizzle upsert guide.
- */
-function excludedColumns(
-  columns: readonly (keyof InsertTokenUsage)[],
-): Record<string, SQL> {
-  const cols = getTableColumns(tokenUsage);
-  const set: Record<string, SQL> = {};
-  for (const column of columns) {
-    set[column] = sql.raw(`excluded.${toSnakeCase(cols[column].name)}`);
-  }
-  return set;
-}
-
-/**
  * Upsert daily `token_usage` aggregates on the composite key
  * (date, agent, provider, model). Shared by the local `usage:ingest` script
  * (direct write) and `POST /api/usage/ingest` (remote write into whichever DB
@@ -97,7 +63,10 @@ function excludedColumns(
 export async function upsertTokenUsage(
   rows: InsertTokenUsage[],
 ): Promise<number> {
-  const set = { ...excludedColumns(UPDATE_COLUMNS), updatedAt: sql`now()` };
+  const set = {
+    ...excludedColumns(tokenUsage, UPDATE_COLUMNS),
+    updatedAt: sql`now()`,
+  };
   for (let i = 0; i < rows.length; i += UPSERT_CHUNK_SIZE) {
     const chunk = rows.slice(i, i + UPSERT_CHUNK_SIZE);
     await db

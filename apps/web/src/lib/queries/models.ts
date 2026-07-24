@@ -21,8 +21,6 @@ import { db, model } from "@/schema";
 const MODELS_API_URL = "https://models.dev/api.json";
 const LITELLM_URL =
   "https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json";
-// OpenRouter is a pluggable alternative secondary source (see
-// `normaliseOpenRouter` in @workspace/usage/registry); not wired in by default.
 const MODELS_PRICING_CACHE_KEY = "models:pricing";
 const LITELLM_CACHE_KEY = "models:litellm";
 const SOURCE_CACHE_TTL = 86_400;
