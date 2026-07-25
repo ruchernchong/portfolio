@@ -22,6 +22,21 @@ import type { ModelRate } from "./pricing";
  * unit-tested with fixtures — fetching + DB I/O live in `apps/web/src/lib/queries`.
  */
 
+/**
+ * The live sources the registry merges, in precedence order.
+ *
+ * Lives here rather than beside the fetchers so the sync workflow can iterate
+ * it: a `"use workflow"` function is compiled into a sandbox with no Node.js
+ * access, and that restriction extends to everything its module imports — the
+ * fetchers reach Redis and the database, this list reaches nothing.
+ */
+export const REGISTRY_SOURCES = [
+  "gateway",
+  "openrouter",
+  "models.dev",
+] as const;
+export type RegistrySource = (typeof REGISTRY_SOURCES)[number];
+
 /** `litellm` is retained for rows written before that source was retired. */
 export type ModelSource =
   | "models.dev"

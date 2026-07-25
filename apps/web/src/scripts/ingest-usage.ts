@@ -51,8 +51,8 @@ async function buildRows(): Promise<InsertTokenUsage[]> {
 
   if (events.length === 0) return [];
 
-  console.log("Syncing model registry (LiteLLM + models.dev + overrides) …");
-  const pricing = await syncModelRegistry();
+  console.log("Syncing model registry (Gateway + OpenRouter + models.dev) …");
+  const { pricing } = await syncModelRegistry();
 
   // Fold events into per-(date, agent, provider, model) aggregates.
   const groups = new Map<string, Aggregate>();

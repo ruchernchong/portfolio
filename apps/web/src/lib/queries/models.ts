@@ -11,6 +11,7 @@ import {
   normaliseModelsDev,
   normaliseOpenRouter,
   type OpenRouterApi,
+  type RegistrySource,
   SEED_OVERRIDES,
 } from "@workspace/usage/registry";
 import { eq, inArray } from "drizzle-orm";
@@ -90,7 +91,10 @@ export async function loadPricing(): Promise<Pricing> {
  * existing table rows survive as the last-good snapshot. Runs at the top of
  * each ingest.
  */
-export async function syncModelRegistry(): Promise<Pricing> {
+export async function syncModelRegistry(): Promise<{
+  pricing: Pricing;
+  rows: number;
+}> {
   const [gateway, openrouter, modelsDev, overrides] = await Promise.all([
     fetchGatewayEntries(),
     fetchOpenRouterEntries(),
@@ -107,8 +111,31 @@ export async function syncModelRegistry(): Promise<Pricing> {
     openrouter,
     modelsDev,
   });
-  await upsertModelRegistry(merged);
-  return buildPricingFromRegistry(merged);
+  const rows = await upsertModelRegistry(merged);
+  return { pricing: buildPricingFromRegistry(merged), rows };
+}
+
+/**
+ * Warm one source's Redis cache and report how many entries it yielded.
+ *
+ * Split out so the sync workflow can fetch each source as an independently
+ * retryable step. The entries themselves are deliberately *not* returned: a
+ * workflow serialises every step result into its journal, and models.dev alone
+ * normalises to ~5,800 entries. The subsequent merge step re-reads all three
+ * from the Redis cache these calls populate, so only the counts need to cross a
+ * step boundary.
+ */
+export async function refreshRegistrySource(
+  source: RegistrySource,
+): Promise<number> {
+  switch (source) {
+    case "gateway":
+      return (await fetchGatewayEntries()).length;
+    case "openrouter":
+      return (await fetchOpenRouterEntries()).length;
+    case "models.dev":
+      return (await fetchModelsDevEntries()).length;
+  }
 }
 
 /** Merge in {@link SEED_OVERRIDES} only for keys the DB has no override for. */

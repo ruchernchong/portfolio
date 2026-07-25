@@ -6,12 +6,14 @@ vi.mock("@/lib/api/mcp-auth", () => ({
 
 vi.mock("@/lib/queries/usage", () => ({
   upsertTokenUsage: vi.fn(),
-  repriceUnpricedTokenUsage: vi.fn(),
 }));
 
-vi.mock("@/lib/queries/models", () => ({
-  loadPricing: vi.fn(),
-  syncModelRegistry: vi.fn(),
+vi.mock("workflow/api", () => ({
+  start: vi.fn(),
+}));
+
+vi.mock("@/workflows/sync-model-registry", () => ({
+  syncModelRegistryWorkflow: vi.fn(),
 }));
 
 vi.mock("next/cache", () => ({
@@ -19,18 +21,14 @@ vi.mock("next/cache", () => ({
 }));
 
 import { revalidateTag } from "next/cache";
+import { start } from "workflow/api";
 import { validateMcpAuth } from "@/lib/api/mcp-auth";
-import { loadPricing } from "@/lib/queries/models";
-import {
-  repriceUnpricedTokenUsage,
-  upsertTokenUsage,
-} from "@/lib/queries/usage";
+import { upsertTokenUsage } from "@/lib/queries/usage";
 import { POST } from "../route";
 
 const mockValidateMcpAuth = vi.mocked(validateMcpAuth);
 const mockUpsertTokenUsage = vi.mocked(upsertTokenUsage);
-const mockRepriceUnpricedTokenUsage = vi.mocked(repriceUnpricedTokenUsage);
-const mockLoadPricing = vi.mocked(loadPricing);
+const mockStart = vi.mocked(start);
 const mockRevalidateTag = vi.mocked(revalidateTag);
 
 /** A single valid daily aggregate matching the wire contract. */
@@ -61,16 +59,12 @@ function postRequest(body: unknown) {
 }
 
 describe("POST /api/usage/ingest", () => {
-  const repriceResult = { scanned: 2, repriced: 1, stillUnpriced: 1 };
-
   beforeEach(() => {
     vi.clearAllMocks();
     mockUpsertTokenUsage.mockResolvedValue(1);
-    // The pricing payload is opaque to the route; the reprice query consumes it.
-    mockLoadPricing.mockResolvedValue(
-      {} as Awaited<ReturnType<typeof loadPricing>>,
-    );
-    mockRepriceUnpricedTokenUsage.mockResolvedValue(repriceResult);
+    mockStart.mockResolvedValue({ runId: "run_123" } as Awaited<
+      ReturnType<typeof start>
+    >);
   });
 
   it("should return 401 when auth fails", async () => {
@@ -80,7 +74,7 @@ describe("POST /api/usage/ingest", () => {
 
     expect(response.status).toBe(401);
     expect(mockUpsertTokenUsage).not.toHaveBeenCalled();
-    expect(mockRepriceUnpricedTokenUsage).not.toHaveBeenCalled();
+    expect(mockStart).not.toHaveBeenCalled();
   });
 
   it("should return 401 for a non-admin session", async () => {
@@ -100,40 +94,47 @@ describe("POST /api/usage/ingest", () => {
     expect(mockUpsertTokenUsage).not.toHaveBeenCalled();
   });
 
-  it("should upsert and revalidate for static-token auth", async () => {
+  it("should upsert, start the sync workflow, and revalidate", async () => {
     mockValidateMcpAuth.mockResolvedValue({ type: "token" });
-    mockUpsertTokenUsage.mockResolvedValue(1);
 
     const response = await POST(postRequest({ rows: [validRow] }));
 
     expect(response.status).toBe(200);
-    const body = await response.json();
-    expect(body).toEqual({ ok: true, upserted: 1, repriced: repriceResult });
+    expect(await response.json()).toEqual({
+      ok: true,
+      upserted: 1,
+      syncRunId: "run_123",
+    });
     expect(mockUpsertTokenUsage).toHaveBeenCalledWith([validRow]);
-    expect(mockRepriceUnpricedTokenUsage).toHaveBeenCalledOnce();
+    expect(mockStart).toHaveBeenCalledOnce();
     expect(mockRevalidateTag).toHaveBeenCalledWith("usage", "max");
   });
 
-  it("should reprice NULL-cost rows after a successful upsert", async () => {
+  it("should not block the response on registry work", async () => {
     mockValidateMcpAuth.mockResolvedValue({ type: "token" });
 
     await POST(postRequest({ rows: [validRow] }));
 
+    // Refreshing the registry and repricing now belong to the workflow; the
+    // route's only synchronous responsibility is the upsert.
     expect(mockUpsertTokenUsage).toHaveBeenCalledOnce();
-    expect(mockRepriceUnpricedTokenUsage).toHaveBeenCalledOnce();
+    expect(mockStart).toHaveBeenCalledOnce();
   });
 
-  it("should still succeed and revalidate when repricing fails", async () => {
+  it("should still succeed when the workflow cannot be started", async () => {
     mockValidateMcpAuth.mockResolvedValue({ type: "token" });
-    // models.dev outage: loadPricing throws *after* the upsert already wrote.
-    mockLoadPricing.mockRejectedValue(new Error("models.dev unavailable"));
+    // The upsert is the durable operation — a scheduling failure must not turn
+    // a successful write into a caller-visible error.
+    mockStart.mockRejectedValue(new Error("queue unavailable"));
 
     const response = await POST(postRequest({ rows: [validRow] }));
 
     expect(response.status).toBe(200);
-    const body = await response.json();
-    expect(body).toEqual({ ok: true, upserted: 1, repriced: null });
-    expect(mockUpsertTokenUsage).toHaveBeenCalledOnce();
+    expect(await response.json()).toEqual({
+      ok: true,
+      upserted: 1,
+      syncRunId: null,
+    });
     expect(mockRevalidateTag).toHaveBeenCalledWith("usage", "max");
   });
 
@@ -163,7 +164,7 @@ describe("POST /api/usage/ingest", () => {
 
     expect(response.status).toBe(400);
     expect(mockUpsertTokenUsage).not.toHaveBeenCalled();
-    expect(mockRepriceUnpricedTokenUsage).not.toHaveBeenCalled();
+    expect(mockStart).not.toHaveBeenCalled();
   });
 
   it("should return 400 when rows is empty", async () => {

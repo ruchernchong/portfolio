@@ -99,6 +99,7 @@
     "ua-parser-js": "^2.0.0",
     "unist-util-visit": "^5.0.0",
     "vite": "^7.3.2",
+    "workflow": "4.6.1",
     "ws": "^8.20.1",
     "zod": "4.4.3"
   },
