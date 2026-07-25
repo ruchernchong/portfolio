@@ -43,7 +43,9 @@ export const model = pgTable(
     contextLimit: integer(),
     releaseDate: date(),
     source: text({
-      enum: ["models.dev", "litellm", "openrouter", "override"],
+      // `litellm` is retained so rows written before that source was retired
+      // still read back cleanly; the next sync rewrites them.
+      enum: ["models.dev", "gateway", "openrouter", "litellm", "override"],
     }).notNull(),
     isOverride: boolean().notNull().default(false),
     aliasTarget: text(),
