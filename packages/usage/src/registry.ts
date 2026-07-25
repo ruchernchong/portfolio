@@ -183,16 +183,24 @@ export function canonicalSlug(slug: string): string {
 }
 
 /**
- * Prices arrive as per-token decimal strings; the registry stores USD/1M.
+ * Prices arrive per-token; the registry stores USD/1M.
  *
  * Anything that is not a finite number becomes `undefined` rather than being
  * passed through. `Number("")` is `0` and `Number("n/a")` is `NaN`, and both
  * would otherwise survive the `!= null` checks downstream — Postgres `numeric`
  * accepts `'NaN'`, so a malformed price would persist and silently poison every
  * cost computed from it. A genuine zero (free models) is finite and kept.
+ *
+ * The parameter is widened to `string | number` and coerced rather than assumed.
+ * Gateway and OpenRouter both send decimal *strings* today, but these payloads
+ * are `as`-cast straight from `response.json()`, so nothing enforces that at
+ * runtime — and number is the more natural JSON encoding for a price (models.dev
+ * already uses it). Calling a string method on a number here would throw out of
+ * the normaliser and cost the whole source, which is the very failure {@link
+ * isoDay} guards against.
  */
-const perTokenStr = (v?: string): number | undefined => {
-  if (v == null || v.trim() === "") return undefined;
+const perTokenStr = (v?: string | number): number | undefined => {
+  if (v == null || (typeof v === "string" && v.trim() === "")) return undefined;
   const perMillion = Number(v) * 1_000_000;
   return Number.isFinite(perMillion) ? perMillion : undefined;
 };
@@ -212,11 +220,12 @@ const isoDay = (unixSeconds?: number): string | undefined => {
 
 // --- Vercel AI Gateway -------------------------------------------------------
 
+/** Decimal strings today; typed loosely because the payload is `as`-cast. */
 interface GatewayPricing {
-  input?: string;
-  output?: string;
-  input_cache_read?: string;
-  input_cache_write?: string;
+  input?: string | number;
+  output?: string | number;
+  input_cache_read?: string | number;
+  input_cache_write?: string | number;
 }
 interface GatewayModel {
   id?: string;
@@ -268,11 +277,12 @@ export function normaliseAIGateway(api: GatewayApi): ModelEntry[] {
 
 // --- OpenRouter --------------------------------------------------------------
 
+/** Decimal strings today; typed loosely because the payload is `as`-cast. */
 interface OpenRouterPricing {
-  prompt?: string;
-  completion?: string;
-  input_cache_read?: string;
-  input_cache_write?: string;
+  prompt?: string | number;
+  completion?: string | number;
+  input_cache_read?: string | number;
+  input_cache_write?: string | number;
 }
 interface OpenRouterModel {
   id: string;
