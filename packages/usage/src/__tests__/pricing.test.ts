@@ -40,10 +40,11 @@ const api: ModelsDevApi = {
   },
 };
 
-// Mirrors production: overrides > LiteLLM > models.dev, built into the registry.
+// Mirrors production: overrides > Gateway > OpenRouter > models.dev.
 const registry = mergeRegistry({
   overrides: SEED_OVERRIDES,
-  litellm: [],
+  gateway: [],
+  openrouter: [],
   modelsDev: normaliseModelsDev(api),
 });
 

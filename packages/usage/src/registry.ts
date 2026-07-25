@@ -3,22 +3,32 @@ import type { ModelRate } from "./pricing";
 /**
  * Pure, network-free model-registry layer.
  *
- * Each pricing/metadata source (LiteLLM, models.dev, or a curated DB override)
- * is normalised into a common {@link ModelEntry}, then merged by precedence
- * into the rows that back the `model` table and, in turn, pricing.
+ * Each pricing/metadata source (Vercel AI Gateway, models.dev, OpenRouter, or a
+ * curated DB override) is normalised into a common {@link ModelEntry}, then
+ * merged by precedence into the rows that back the `model` table and, in turn,
+ * pricing.
  *
  * Precedence, applied field-by-field:
- *   - rates:                override > LiteLLM > models.dev
- *   - names / release date / context limit: override > models.dev
+ *   - rates:                override > Gateway > OpenRouter > models.dev
+ *   - names / metadata:     override > Gateway > models.dev > OpenRouter
  *
- * LiteLLM has the broadest, freshest pricing but no display names, so it leads
- * on rates; models.dev supplies the names/release dates LiteLLM lacks and fills
- * any model LiteLLM misses. A curated override always wins. All of this is
- * pure so it can be unit-tested with fixtures — fetching + DB I/O live in
- * `apps/web/src/lib/queries`.
+ * The layers are complements, not competitors. Gateway is documented zero-markup
+ * (vendor list price) and carries names, release dates and cache rates for the
+ * first-party vendors. models.dev is the only source covering reseller-routed
+ * providers such as OpenCode and Ollama Cloud, which bill at the reseller's rate
+ * rather than the vendor's — so it can never be replaced by a vendor source.
+ * OpenRouter fills a small tail of vendor-internal slugs neither of the others
+ * lists. A curated override always wins. All of this is pure so it can be
+ * unit-tested with fixtures — fetching + DB I/O live in `apps/web/src/lib/queries`.
  */
 
-export type ModelSource = "models.dev" | "litellm" | "openrouter" | "override";
+/** `litellm` is retained for rows written before that source was retired. */
+export type ModelSource =
+  | "models.dev"
+  | "gateway"
+  | "openrouter"
+  | "litellm"
+  | "override";
 
 /**
  * Bootstrap override rows, replacing the former hardcoded `MODEL_RATE_OVERRIDES`
@@ -151,128 +161,143 @@ export function normaliseModelsDev(api: ModelsDevApi): ModelEntry[] {
   return entries;
 }
 
-// --- LiteLLM ---------------------------------------------------------------
-
-interface LiteLLMModel {
-  input_cost_per_token?: number;
-  output_cost_per_token?: number;
-  cache_read_input_token_cost?: number;
-  cache_creation_input_token_cost?: number;
-  max_input_tokens?: number;
-  litellm_provider?: string;
-  mode?: string;
-}
-export type LiteLLMTable = Record<string, LiteLLMModel | unknown>;
-
-/** Routing/hosting prefixes to strip, and vendor `<name>.` prefixes to unwrap. */
-const KNOWN_VENDOR_PREFIXES = new Set([
-  "anthropic",
-  "openai",
-  "azure",
-  "azure_ai",
-  "gemini",
-  "google",
-  "vertex_ai",
-  "bedrock",
-  "bedrock_converse",
-  "fireworks_ai",
-  "cohere",
-  "mistral",
-  "meta",
-  "xai",
-]);
-
-const LITELLM_PROVIDER_MAP: Record<string, string> = {
-  anthropic: "anthropic",
-  openai: "openai",
-  "text-completion-openai": "openai",
-  azure: "openai",
-  azure_ai: "openai",
-  gemini: "google",
-  google: "google",
-  vertex_ai: "google",
-  "vertex_ai-language-models": "google",
-  fireworks_ai: "fireworks-ai",
-  "fireworks-ai": "fireworks-ai",
-  xai: "xai",
-};
+// --- Slug canonicalisation --------------------------------------------------
 
 /**
- * Reduce a (possibly provider-prefixed / hosting-routed) LiteLLM key to the
- * bare model slug our logs use. Strips a leading `route/` segment, then a
- * leading vendor `<name>.` prefix — but only when `<name>` is a known vendor,
- * so a model whose slug legitimately contains a dot (e.g. `gpt-5.6`,
- * `claude-3.5-sonnet`) is left intact.
+ * Reduce a model slug to a comparison key.
+ *
+ * Sources disagree on punctuation for the same model. Vercel AI Gateway
+ * documents dots for version numbers (`claude-opus-4.8`) while the Anthropic
+ * API — and therefore our agent logs — use dashes (`claude-opus-4-8`), and logs
+ * additionally carry a dated variant (`claude-haiku-4-5-20251001`). Stripping
+ * the date suffix and all punctuation makes those three forms one key.
+ *
+ * Only ever used as a *fallback* after an exact id match, so a hypothetical
+ * collision between two genuinely different slugs cannot displace an exact hit.
  */
-export function bareSlug(key: string): string {
-  let slug = key.includes("/") ? key.slice(key.lastIndexOf("/") + 1) : key;
-  const dot = slug.indexOf(".");
-  if (dot > 0 && KNOWN_VENDOR_PREFIXES.has(slug.slice(0, dot).toLowerCase())) {
-    slug = slug.slice(dot + 1);
-  }
-  return slug;
+export function canonicalSlug(slug: string): string {
+  return slug
+    .replace(/-\d{8}$/, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
 }
 
-/** Infer the billing vendor from the slug itself for the models we track. */
-function vendorFromSlug(slug: string): string | undefined {
-  const s = slug.toLowerCase();
-  if (s.startsWith("claude")) return "anthropic";
-  if (
-    s.startsWith("gpt") ||
-    s.startsWith("codex") ||
-    s.startsWith("chatgpt") ||
-    /^o[134]\b/.test(s)
-  ) {
-    return "openai";
-  }
-  if (s.startsWith("gemini")) return "google";
-  return undefined;
+/** Prices arrive as per-token decimal strings; the registry stores USD/1M. */
+const perTokenStr = (v?: string): number | undefined =>
+  v == null ? undefined : Number(v) * 1_000_000;
+
+const isoDay = (unixSeconds?: number): string | undefined =>
+  unixSeconds == null
+    ? undefined
+    : new Date(unixSeconds * 1000).toISOString().slice(0, 10);
+
+// --- Vercel AI Gateway -------------------------------------------------------
+
+interface GatewayPricing {
+  input?: string;
+  output?: string;
+  input_cache_read?: string;
+  input_cache_write?: string;
+}
+interface GatewayModel {
+  id?: string;
+  name?: string;
+  released?: number;
+  context_window?: number;
+  pricing?: GatewayPricing;
+}
+/** `GET https://ai-gateway.vercel.sh/v1/models`. */
+export interface GatewayApi {
+  data?: GatewayModel[];
 }
 
-function resolveLiteLLMProvider(model: LiteLLMModel, slug: string): string {
-  return (
-    vendorFromSlug(slug) ??
-    LITELLM_PROVIDER_MAP[model.litellm_provider ?? ""] ??
-    model.litellm_provider ??
-    "unknown"
-  );
-}
-
-function isLiteLLMModel(value: unknown): value is LiteLLMModel {
-  return typeof value === "object" && value !== null;
-}
-
-const perToken = (v?: number): number | undefined =>
-  v == null ? undefined : v * 1_000_000;
-
-export function normaliseLiteLLM(table: LiteLLMTable): ModelEntry[] {
-  // Dedupe (provider, id) across bedrock/vertex duplicates: first priced wins.
-  const seen = new Map<string, ModelEntry>();
-  for (const [key, value] of Object.entries(table)) {
-    if (key === "sample_spec" || !isLiteLLMModel(value)) continue;
-    const input = perToken(value.input_cost_per_token);
-    const output = perToken(value.output_cost_per_token);
-    if (input == null || output == null) continue;
-
-    const slug = bareSlug(key);
-    const provider = resolveLiteLLMProvider(value, slug);
-    const mapKey = `${provider}\0${slug}`;
-    if (seen.has(mapKey)) continue;
-
-    seen.set(mapKey, {
-      provider,
-      id: slug,
-      rate: {
-        input,
-        output,
-        cacheRead: perToken(value.cache_read_input_token_cost) ?? 0,
-        cacheWrite: perToken(value.cache_creation_input_token_cost) ?? 0,
-      },
-      contextLimit: value.max_input_tokens,
-      source: "litellm",
+/**
+ * Normalise the AI Gateway catalogue.
+ *
+ * Ids are uniformly `owner/model`, so the provider needs no inference — a large
+ * part of why this replaced the LiteLLM adapter. Vercel documents Gateway as
+ * zero-markup ("tokens at exact provider list price"), so these are vendor list
+ * rates rather than a reseller's.
+ */
+export function normaliseAIGateway(api: GatewayApi): ModelEntry[] {
+  const entries: ModelEntry[] = [];
+  for (const model of api.data ?? []) {
+    const slash = model.id?.indexOf("/") ?? -1;
+    if (!model.id || slash <= 0) continue;
+    const input = perTokenStr(model.pricing?.input);
+    const output = perTokenStr(model.pricing?.output);
+    entries.push({
+      provider: model.id.slice(0, slash),
+      id: model.id.slice(slash + 1),
+      displayName: model.name,
+      rate:
+        input != null && output != null
+          ? {
+              input,
+              output,
+              cacheRead: perTokenStr(model.pricing?.input_cache_read) ?? 0,
+              cacheWrite: perTokenStr(model.pricing?.input_cache_write) ?? 0,
+            }
+          : undefined,
+      contextLimit: model.context_window,
+      releaseDate: isoDay(model.released),
+      source: "gateway",
     });
   }
-  return [...seen.values()];
+  return entries;
+}
+
+// --- OpenRouter --------------------------------------------------------------
+
+interface OpenRouterPricing {
+  prompt?: string;
+  completion?: string;
+  input_cache_read?: string;
+  input_cache_write?: string;
+}
+interface OpenRouterModel {
+  id: string;
+  name?: string;
+  created?: number;
+  context_length?: number;
+  pricing?: OpenRouterPricing;
+}
+/** `GET https://openrouter.ai/api/v1/models`. */
+export interface OpenRouterApi {
+  data?: OpenRouterModel[];
+}
+
+/**
+ * Normalise the OpenRouter catalogue. Same `vendor/model` id shape as Gateway.
+ * Carries a handful of vendor-internal slugs the other sources miss entirely
+ * (e.g. the `gpt-5.6-*-pro` variants), which is the reason it is in the merge.
+ */
+export function normaliseOpenRouter(api: OpenRouterApi): ModelEntry[] {
+  const entries: ModelEntry[] = [];
+  for (const model of api.data ?? []) {
+    const slash = model.id.indexOf("/");
+    if (slash <= 0) continue;
+    const input = perTokenStr(model.pricing?.prompt);
+    const output = perTokenStr(model.pricing?.completion);
+    entries.push({
+      provider: model.id.slice(0, slash),
+      id: model.id.slice(slash + 1),
+      displayName: model.name,
+      rate:
+        input != null && output != null
+          ? {
+              input,
+              output,
+              cacheRead: perTokenStr(model.pricing?.input_cache_read) ?? 0,
+              cacheWrite: perTokenStr(model.pricing?.input_cache_write) ?? 0,
+            }
+          : undefined,
+      contextLimit: model.context_length,
+      releaseDate: isoDay(model.created),
+      source: "openrouter",
+    });
+  }
+  return entries;
 }
 
 // --- Merge -----------------------------------------------------------------
@@ -300,48 +325,81 @@ function pick<T>(...values: (T | undefined)[]): T | undefined {
  * a unit from the highest-precedence layer that defines input+output (never
  * mixing input from one source with output from another); names/metadata fill
  * independently from the highest layer that has each.
+ *
+ * In practice the ordering rarely decides anything: across the models actually
+ * in use, the sources were measured to disagree on exactly one rate. It matters
+ * for *coverage*, not arbitration — each layer mostly fills gaps the others
+ * have. models.dev in particular is the only source carrying reseller-routed
+ * providers (OpenCode, Ollama Cloud), which bill at the reseller's rate rather
+ * than the vendor's, so it can never be dropped in favour of a vendor source.
  */
 export function mergeRegistry(sources: {
   overrides: ModelEntry[];
-  litellm: ModelEntry[];
+  gateway: ModelEntry[];
+  openrouter: ModelEntry[];
   modelsDev: ModelEntry[];
 }): ModelEntry[] {
   const override = indexBy(sources.overrides);
-  const litellm = indexBy(sources.litellm);
+  const gateway = indexBy(sources.gateway);
+  const openrouter = indexBy(sources.openrouter);
   const modelsDev = indexBy(sources.modelsDev);
 
   const keys = new Set([
     ...override.keys(),
-    ...litellm.keys(),
+    ...gateway.keys(),
+    ...openrouter.keys(),
     ...modelsDev.keys(),
   ]);
 
   return [...keys].map((key) => {
     const o = override.get(key);
-    const l = litellm.get(key);
+    const g = gateway.get(key);
+    const r = openrouter.get(key);
     const m = modelsDev.get(key);
-    const base = (o ?? l ?? m) as ModelEntry;
+    const base = (o ?? g ?? r ?? m) as ModelEntry;
 
-    // Rates: override > LiteLLM > models.dev, taken whole from the first layer
-    // that fully defines them.
+    // Rates: override > Gateway > OpenRouter > models.dev, taken whole from the
+    // first layer that fully defines them.
     const rateLayer = hasFullRate(o)
       ? o
-      : hasFullRate(l)
-        ? l
-        : hasFullRate(m)
-          ? m
-          : undefined;
+      : hasFullRate(g)
+        ? g
+        : hasFullRate(r)
+          ? r
+          : hasFullRate(m)
+            ? m
+            : undefined;
 
     return {
       provider: base.provider,
       id: base.id,
-      // Names/metadata: override > models.dev > LiteLLM(none)/OpenRouter.
-      displayName: pick(o?.displayName, m?.displayName, l?.displayName),
+      // Names/metadata: override > Gateway > models.dev > OpenRouter.
+      displayName: pick(
+        o?.displayName,
+        g?.displayName,
+        m?.displayName,
+        r?.displayName,
+      ),
       rate: rateLayer?.rate,
-      contextLimit: pick(o?.contextLimit, m?.contextLimit, l?.contextLimit),
-      releaseDate: pick(o?.releaseDate, m?.releaseDate, l?.releaseDate),
-      aliasTarget: pick(o?.aliasTarget, l?.aliasTarget, m?.aliasTarget),
-      source: rateLayer?.source ?? o?.source ?? m?.source ?? base.source,
+      contextLimit: pick(
+        o?.contextLimit,
+        g?.contextLimit,
+        m?.contextLimit,
+        r?.contextLimit,
+      ),
+      releaseDate: pick(
+        o?.releaseDate,
+        g?.releaseDate,
+        m?.releaseDate,
+        r?.releaseDate,
+      ),
+      aliasTarget: pick(
+        o?.aliasTarget,
+        g?.aliasTarget,
+        r?.aliasTarget,
+        m?.aliasTarget,
+      ),
+      source: rateLayer?.source ?? o?.source ?? base.source,
       isOverride: o != null,
     } satisfies ModelEntry;
   });

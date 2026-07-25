@@ -1,13 +1,13 @@
 import { AGENT_PROVIDERS } from "./providers";
-import type { ModelEntry } from "./registry";
+import { canonicalSlug, type ModelEntry } from "./registry";
 import type { TokenBreakdown } from "./types";
 
 /**
- * Model pricing, built from the merged {@link ModelEntry} registry (LiteLLM +
- * models.dev + curated DB overrides). Formerly this module embedded pricing
- * gap-fillers as hardcoded constants; they now live as data in the `model`
- * table (bootstrapped from seed override rows and editable via the MCP tools),
- * so a newly-released model prices automatically once a live source lists it.
+ * Model pricing, built from the merged {@link ModelEntry} registry (AI Gateway +
+ * models.dev + OpenRouter + curated DB overrides). Formerly this module embedded
+ * pricing gap-fillers as hardcoded constants; they now live as data in the
+ * `model` table (bootstrapped from seed override rows and editable via the MCP
+ * tools), so a newly-released model prices automatically once a source lists it.
  *
  * Every lookup is provider-scoped: the provider is given explicitly
  * (multi-provider agents like OpenCode) or derived from the agent (Claude →
@@ -60,8 +60,11 @@ function toRate(rate: Partial<ModelRate>): ModelRate | null {
  */
 export function buildPricingFromRegistry(entries: ModelEntry[]): Pricing {
   // Per-provider lookup, plus per-provider aliases (e.g. codex-auto-review →
-  // gpt-5-codex).
+  // gpt-5-codex). A parallel index keyed by `canonicalSlug` absorbs the
+  // punctuation differences between sources (AI Gateway's `claude-opus-4.8` vs
+  // the logs' `claude-opus-4-8`); it is only consulted when the exact id misses.
   const byProvider: Record<string, Record<string, ModelRate>> = {};
+  const byProviderCanonical: Record<string, Record<string, ModelRate>> = {};
   const aliasByProvider: Record<string, Record<string, string>> = {};
 
   for (const entry of entries) {
@@ -74,6 +77,9 @@ export function buildPricingFromRegistry(entries: ModelEntry[]): Pricing {
     if (!rate) continue;
     byProvider[entry.provider] ??= {};
     byProvider[entry.provider][entry.id] = rate;
+    byProviderCanonical[entry.provider] ??= {};
+    // First entry wins, so an exact-id duplicate never displaces an earlier one.
+    byProviderCanonical[entry.provider][canonicalSlug(entry.id)] ??= rate;
   }
 
   const warned = new Set<string>();
@@ -85,8 +91,12 @@ export function buildPricingFromRegistry(entries: ModelEntry[]): Pricing {
       opts?.provider ?? (agent ? AGENT_PROVIDERS[agent] : undefined);
     if (!provider) return null;
     // Resolve a provider-scoped alias (replaces the old agent-keyed MODEL_ALIASES).
-    const canonical = aliasByProvider[provider]?.[model] ?? model;
-    return byProvider[provider]?.[canonical] ?? null;
+    const target = aliasByProvider[provider]?.[model] ?? model;
+    return (
+      byProvider[provider]?.[target] ??
+      byProviderCanonical[provider]?.[canonicalSlug(target)] ??
+      null
+    );
   }
 
   function costOf(

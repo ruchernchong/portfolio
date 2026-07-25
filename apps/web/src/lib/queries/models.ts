@@ -3,11 +3,14 @@ import {
   type Pricing,
 } from "@workspace/usage/pricing";
 import {
+  type GatewayApi,
   type ModelEntry,
   type ModelsDevApi,
   mergeRegistry,
-  normaliseLiteLLM,
+  normaliseAIGateway,
   normaliseModelsDev,
+  normaliseOpenRouter,
+  type OpenRouterApi,
   SEED_OVERRIDES,
 } from "@workspace/usage/registry";
 import { eq, inArray } from "drizzle-orm";
@@ -19,10 +22,18 @@ import { repriceUnpricedTokenUsage } from "@/lib/queries/usage";
 import { db, model } from "@/schema";
 
 const MODELS_API_URL = "https://models.dev/api.json";
-const LITELLM_URL =
-  "https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json";
+/**
+ * The Gateway catalogue is public: an unauthenticated GET returns it, while an
+ * *invalid* bearer is rejected with 401. So this is deliberately sent with no
+ * Authorization header — supplying a stale token could only turn a working
+ * request into a failing one, and the public catalogue carries everything the
+ * registry needs (list prices plus names, release dates and context windows).
+ */
+const GATEWAY_URL = "https://ai-gateway.vercel.sh/v1/models";
+const OPENROUTER_URL = "https://openrouter.ai/api/v1/models";
 const MODELS_PRICING_CACHE_KEY = "models:pricing";
-const LITELLM_CACHE_KEY = "models:litellm";
+const GATEWAY_CACHE_KEY = "models:gateway";
+const OPENROUTER_CACHE_KEY = "models:openrouter";
 const SOURCE_CACHE_TTL = 86_400;
 
 const PROVIDER_ALIASES: Record<string, string> = {
@@ -69,17 +80,20 @@ export async function loadPricing(): Promise<Pricing> {
 /**
  * Refresh the `model` registry from all sources and return the built pricing.
  *
- * Fetches LiteLLM (primary rates) and models.dev (names/metadata + rate
- * gap-fill) alongside the curated DB overrides, merges them by precedence
- * (override > LiteLLM > models.dev for rates; override > models.dev for names),
+ * Fetches AI Gateway (zero-markup vendor list rates, plus names and release
+ * dates), OpenRouter (a small tail of vendor-internal slugs), and models.dev
+ * (the only source covering reseller-routed providers such as OpenCode, which
+ * bill at the reseller's rate) alongside the curated DB overrides. Merges by
+ * precedence — override > Gateway > OpenRouter > models.dev for rates —
  * upserts the merged rows, and returns pricing built from them. A source that
- * fails to fetch is skipped, not fatal — the merge omits that layer and the
+ * fails to fetch is skipped, not fatal: the merge omits that layer and the
  * existing table rows survive as the last-good snapshot. Runs at the top of
  * each ingest.
  */
 export async function syncModelRegistry(): Promise<Pricing> {
-  const [litellm, modelsDev, overrides] = await Promise.all([
-    fetchLiteLLMEntries(),
+  const [gateway, openrouter, modelsDev, overrides] = await Promise.all([
+    fetchGatewayEntries(),
+    fetchOpenRouterEntries(),
     fetchModelsDevEntries(),
     loadOverrideEntries(),
   ]);
@@ -87,7 +101,12 @@ export async function syncModelRegistry(): Promise<Pricing> {
   // Seed overrides bootstrap keys the DB has no curated override for yet.
   const seeded = seedOverrides(overrides);
 
-  const merged = mergeRegistry({ overrides: seeded, litellm, modelsDev });
+  const merged = mergeRegistry({
+    overrides: seeded,
+    gateway,
+    openrouter,
+    modelsDev,
+  });
   await upsertModelRegistry(merged);
   return buildPricingFromRegistry(merged);
 }
@@ -101,26 +120,57 @@ function seedOverrides(dbOverrides: ModelEntry[]): ModelEntry[] {
   return [...dbOverrides, ...missing];
 }
 
-async function fetchLiteLLMEntries(): Promise<ModelEntry[]> {
+/**
+ * Fetch one JSON source through the Redis day-cache, normalise it, and degrade
+ * to an empty layer on failure. An unavailable source must narrow the merge,
+ * never fail the whole sync — the other layers plus the persisted table still
+ * produce usable pricing.
+ */
+async function fetchSourceEntries<T>(
+  label: string,
+  url: string,
+  cacheKey: string,
+  normalise: (json: T) => ModelEntry[],
+): Promise<ModelEntry[]> {
   try {
-    const cached = await redis.get<Record<string, unknown>>(LITELLM_CACHE_KEY);
-    if (cached) return normaliseLiteLLM(cached);
+    const cached = await redis.get<T>(cacheKey);
+    if (cached) return normalise(cached);
 
-    const response = await fetch(LITELLM_URL);
-    if (!response.ok) throw new Error(`LiteLLM returned ${response.status}`);
-    const json = (await response.json()) as Record<string, unknown>;
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`${label} returned ${response.status}`);
+    }
+    const json = (await response.json()) as T;
     try {
-      await redis.set(LITELLM_CACHE_KEY, json, { ex: SOURCE_CACHE_TTL });
+      await redis.set(cacheKey, json, { ex: SOURCE_CACHE_TTL });
     } catch {
       // Pricing can still be built from the fresh response if Redis is down.
     }
-    return normaliseLiteLLM(json);
+    return normalise(json);
   } catch (error) {
-    logWarning("Skipped LiteLLM source during model registry sync", {
+    logWarning(`Skipped ${label} source during model registry sync`, {
       error: error instanceof Error ? error.message : String(error),
     });
     return [];
   }
+}
+
+function fetchGatewayEntries(): Promise<ModelEntry[]> {
+  return fetchSourceEntries<GatewayApi>(
+    "AI Gateway",
+    GATEWAY_URL,
+    GATEWAY_CACHE_KEY,
+    normaliseAIGateway,
+  );
+}
+
+function fetchOpenRouterEntries(): Promise<ModelEntry[]> {
+  return fetchSourceEntries<OpenRouterApi>(
+    "OpenRouter",
+    OPENROUTER_URL,
+    OPENROUTER_CACHE_KEY,
+    normaliseOpenRouter,
+  );
 }
 
 async function fetchModelsDevEntries(): Promise<ModelEntry[]> {
