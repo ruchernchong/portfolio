@@ -32,7 +32,7 @@ vi.mock("@/lib/queries/model-registry", () => ({
   upsertModelRegistry,
 }));
 
-import { syncModelRegistry } from "../models";
+import { refreshRegistrySource, syncModelRegistry } from "../models";
 
 const gatewayPayload = {
   data: [
@@ -115,5 +115,34 @@ describe("syncModelRegistry source fetching", () => {
     await syncModelRegistry();
 
     expect(upsertedEntries().some((e) => e.id === "gpt-5-codex")).toBe(true);
+  });
+});
+
+describe("refreshRegistrySource", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    redisSet.mockResolvedValue("OK");
+  });
+
+  it("should reject when the source is unavailable", async () => {
+    // The workflow wraps this in a retrying step, and a step only retries when
+    // it throws. Swallowing the failure here — as this used to — left the step
+    // succeeding with an empty layer on the first transient error, so the retry
+    // it was split out for could never fire.
+    redisGet.mockResolvedValue(null);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({ ok: false, status: 503 }),
+    );
+
+    await expect(refreshRegistrySource("gateway")).rejects.toThrow(
+      "AI Gateway returned 503",
+    );
+  });
+
+  it("should report how many entries the source yielded", async () => {
+    redisGet.mockResolvedValue(gatewayPayload);
+
+    await expect(refreshRegistrySource("gateway")).resolves.toBe(1);
   });
 });

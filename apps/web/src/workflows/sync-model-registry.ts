@@ -30,7 +30,8 @@ export async function syncModelRegistryWorkflow() {
   "use workflow";
 
   // One step per source. A source that is down or rate-limited retries on its
-  // own and, if it stays down, narrows the merge rather than failing the run.
+  // own and, if it stays down, narrows the merge rather than failing the run —
+  // reporting `degraded: true` so the run says which layer it went without.
   const sources = await Promise.all(REGISTRY_SOURCES.map(refreshSource));
 
   const { rows } = await mergeAndUpsert();

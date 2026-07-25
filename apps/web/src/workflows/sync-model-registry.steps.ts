@@ -1,10 +1,12 @@
 import type { RegistrySource } from "@workspace/usage/registry";
 import { revalidateTag } from "next/cache";
+import { getStepMetadata } from "workflow";
 import { ERROR_IDS } from "@/constants/error-ids";
 import { logWarning } from "@/lib/logger";
 import {
   loadPricing,
   refreshRegistrySource,
+  SOURCE_LABELS,
   syncModelRegistry,
 } from "@/lib/queries/models";
 import { repriceUnpricedTokenUsage } from "@/lib/queries/usage";
@@ -23,12 +25,46 @@ import { repriceUnpricedTokenUsage } from "@/lib/queries/usage";
  * Redis cache rather than through the journal.
  */
 
+/** Retries after the first attempt, so a source gets 4 tries in total. */
+const MAX_SOURCE_RETRIES = 3;
+
+/**
+ * Warm one source's cache, retrying a transient outage before giving up on it.
+ *
+ * The failure has to reach this step boundary for the retry to happen at all,
+ * which is why `refreshRegistrySource` rejects rather than degrading. Only once
+ * the attempts are spent does the source degrade to an empty layer, so a source
+ * that stays down narrows the merge instead of failing the run — the property
+ * the inline sync had, now with retries in front of it.
+ *
+ * `degraded` rides back in the step result so an outage is visible in the run's
+ * return value (`npx workflow inspect runs <id>`) rather than only in a log line
+ * nobody reads. Note that a degraded source still lets lower-precedence sources
+ * win the merge for models they both carry, and the upsert is unconditional —
+ * see the follow-up on not downgrading a row when its source is missing.
+ */
 export async function refreshSource(source: RegistrySource) {
   "use step";
 
-  const entries = await refreshRegistrySource(source);
-  return { source, entries };
+  try {
+    const entries = await refreshRegistrySource(source);
+    return { source, entries, degraded: false };
+  } catch (error) {
+    // `attempt` counts from 1 and the runtime stops retrying once it reaches
+    // `maxRetries + 1`, so while it is within that budget a rethrow buys another
+    // attempt. On the final one a rethrow would fail the whole run instead.
+    const { attempt } = getStepMetadata();
+    if (attempt <= MAX_SOURCE_RETRIES) throw error;
+
+    logWarning(`Skipped ${SOURCE_LABELS[source]} after exhausting retries`, {
+      errorId: ERROR_IDS.USAGE_INGEST_FAILED,
+      error: error instanceof Error ? error.message : String(error),
+      attempt,
+    });
+    return { source, entries: 0, degraded: true };
+  }
 }
+refreshSource.maxRetries = MAX_SOURCE_RETRIES;
 
 export async function mergeAndUpsert() {
   "use step";
