@@ -1,3 +1,13 @@
+## [1.31.0](https://github.com/ruchernchong/blog/compare/v1.30.0...v1.31.0) (2026-07-25)
+
+### Features
+
+* move the model registry sync onto Vercel Workflow ([9ca19d2](https://github.com/ruchernchong/blog/commit/9ca19d28824e8806436019902edceb7baf41abf4)), closes [#347](https://github.com/ruchernchong/blog/issues/347)
+
+### Bug Fixes
+
+* prevent a numeric price dropping a whole source ([e55c1a9](https://github.com/ruchernchong/blog/commit/e55c1a995eca232eaac25ec733443252b949ca5c)), closes [#350](https://github.com/ruchernchong/blog/issues/350)
+
 ## [1.30.0](https://github.com/ruchernchong/blog/compare/v1.29.2...v1.30.0) (2026-07-25)
 
 ### Features
