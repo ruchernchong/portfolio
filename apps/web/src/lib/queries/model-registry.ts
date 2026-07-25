@@ -1,5 +1,6 @@
 import type { ModelEntry } from "@workspace/usage/registry";
-import { getTableColumns, type SQL, sql } from "drizzle-orm";
+import { sql } from "drizzle-orm";
+import { excludedColumns } from "@/lib/queries/upsert";
 import { db, type InsertModel, model, type SelectModel } from "@/schema";
 
 /** Postgres caps bound parameters per statement; chunk large upserts under it. */
@@ -18,22 +19,6 @@ const UPDATE_COLUMNS = [
   "isOverride",
   "aliasTarget",
 ] as const satisfies (keyof InsertModel)[];
-
-/** Mirror the Drizzle `casing: "snake_case"` config (see `usage.ts`). */
-function toSnakeCase(name: string): string {
-  return name.replace(/[A-Z]/g, (char) => `_${char.toLowerCase()}`);
-}
-
-function excludedColumns(
-  columns: readonly (keyof InsertModel)[],
-): Record<string, SQL> {
-  const cols = getTableColumns(model);
-  const set: Record<string, SQL> = {};
-  for (const column of columns) {
-    set[column] = sql.raw(`excluded.${toSnakeCase(cols[column].name)}`);
-  }
-  return set;
-}
 
 const rate = (value?: number): string | null =>
   value == null ? null : value.toFixed(6);
@@ -106,7 +91,10 @@ export async function upsertModelRegistry(
 ): Promise<number> {
   if (entries.length === 0) return 0;
   const rows = entries.map(entryToRow);
-  const set = { ...excludedColumns(UPDATE_COLUMNS), updatedAt: sql`now()` };
+  const set = {
+    ...excludedColumns(model, UPDATE_COLUMNS),
+    updatedAt: sql`now()`,
+  };
   for (let i = 0; i < rows.length; i += UPSERT_CHUNK_SIZE) {
     const chunk = rows.slice(i, i + UPSERT_CHUNK_SIZE);
     await db

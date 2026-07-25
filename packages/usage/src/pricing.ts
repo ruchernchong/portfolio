@@ -1,9 +1,5 @@
 import { AGENT_PROVIDERS } from "./providers";
-import {
-  type ModelEntry,
-  type ModelsDevApi,
-  normaliseModelsDev,
-} from "./registry";
+import type { ModelEntry } from "./registry";
 import type { TokenBreakdown } from "./types";
 
 /**
@@ -13,10 +9,12 @@ import type { TokenBreakdown } from "./types";
  * table (bootstrapped from seed override rows and editable via the MCP tools),
  * so a newly-released model prices automatically once a live source lists it.
  *
- * We resolve each model under its provider first — given explicitly
+ * Every lookup is provider-scoped: the provider is given explicitly
  * (multi-provider agents like OpenCode) or derived from the agent (Claude →
- * anthropic, Codex → openai) — then fall back to a global lookup. Pricing runs
- * only in the local ingest script and the reprice pass, never in the browser.
+ * anthropic, Codex → openai). A model whose provider cannot be resolved is
+ * unpriceable rather than borrowing another provider's rate — the same slug is
+ * routinely a different price under a different provider. Pricing runs only in
+ * the local ingest script and the reprice pass, never in the browser.
  */
 
 /** USD per 1,000,000 tokens for each token kind. */
@@ -61,10 +59,9 @@ function toRate(rate: Partial<ModelRate>): ModelRate | null {
  * DB) so it can be unit-tested with fixture entries.
  */
 export function buildPricingFromRegistry(entries: ModelEntry[]): Pricing {
-  // Per-provider lookup, plus a global fallback keyed by bare model id, plus
-  // per-provider aliases (e.g. codex-auto-review → gpt-5-codex).
+  // Per-provider lookup, plus per-provider aliases (e.g. codex-auto-review →
+  // gpt-5-codex).
   const byProvider: Record<string, Record<string, ModelRate>> = {};
-  const global: Record<string, ModelRate> = {};
   const aliasByProvider: Record<string, Record<string, string>> = {};
 
   for (const entry of entries) {
@@ -77,12 +74,6 @@ export function buildPricingFromRegistry(entries: ModelEntry[]): Pricing {
     if (!rate) continue;
     byProvider[entry.provider] ??= {};
     byProvider[entry.provider][entry.id] = rate;
-    // First provider to define a model id wins the global fallback — but only
-    // live-source rates populate it. Curated overrides are provider-scoped by
-    // design, so they must never leak to a lookup under a different provider.
-    if (entry.source !== "override" && !global[entry.id]) {
-      global[entry.id] = rate;
-    }
   }
 
   const warned = new Set<string>();
@@ -92,12 +83,10 @@ export function buildPricingFromRegistry(entries: ModelEntry[]): Pricing {
     // Prefer an explicit provider (multi-provider agents), else derive from agent.
     const provider =
       opts?.provider ?? (agent ? AGENT_PROVIDERS[agent] : undefined);
+    if (!provider) return null;
     // Resolve a provider-scoped alias (replaces the old agent-keyed MODEL_ALIASES).
-    const canonical = (provider && aliasByProvider[provider]?.[model]) ?? model;
-    if (provider && byProvider[provider]?.[canonical]) {
-      return byProvider[provider][canonical];
-    }
-    return global[canonical] ?? null;
+    const canonical = aliasByProvider[provider]?.[model] ?? model;
+    return byProvider[provider]?.[canonical] ?? null;
   }
 
   function costOf(
@@ -129,13 +118,4 @@ export function buildPricingFromRegistry(entries: ModelEntry[]): Pricing {
   }
 
   return { priceFor, costOf };
-}
-
-/**
- * Build a {@link Pricing} from a raw models.dev payload. Back-compat wrapper
- * over {@link buildPricingFromRegistry} for callers/fixtures that only have the
- * models.dev API (no LiteLLM/overrides layer).
- */
-export function buildPricing(api: ModelsDevApi): Pricing {
-  return buildPricingFromRegistry(normaliseModelsDev(api));
 }
