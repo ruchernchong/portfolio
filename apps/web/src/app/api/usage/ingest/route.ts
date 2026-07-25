@@ -1,15 +1,13 @@
 import { usageIngestSchema } from "@workspace/usage/ingest";
 import { revalidateTag } from "next/cache";
+import { start } from "workflow/api";
 import { ERROR_IDS } from "@/constants/error-ids";
 import { handleApiError } from "@/lib/api/errors";
 import { validateMcpAuth } from "@/lib/api/mcp-auth";
 import { parseAndValidateBody } from "@/lib/api/validation";
 import { logWarning } from "@/lib/logger";
-import { loadPricing, syncModelRegistry } from "@/lib/queries/models";
-import {
-  repriceUnpricedTokenUsage,
-  upsertTokenUsage,
-} from "@/lib/queries/usage";
+import { upsertTokenUsage } from "@/lib/queries/usage";
+import { syncModelRegistryWorkflow } from "@/workflows/sync-model-registry";
 
 /**
  * Ingest daily token-usage aggregates into *this* deployment's database.
@@ -22,11 +20,13 @@ import {
  *
  * Writes are gated to the static MCP token or an admin session (OAuth sign-up is
  * open, so a plain authenticated session is not enough to overwrite prod data).
- * After the upsert, every still-`NULL`-cost row is repriced from its stored
- * tokens (healing stale orphans whose source log was pruned, so re-ingesting can
- * no longer reach them), then the `usage` and `models:providers` cache tags are
- * revalidated so the public `/usage` page reflects both the new data and any
- * display names the registry sync just learned.
+ *
+ * The upsert is the only synchronous work. Refreshing the model registry and
+ * repricing previously-unpriceable rows are handed to
+ * {@link syncModelRegistryWorkflow}, which runs off the request path with
+ * per-source retries and a visible success/failure record — this route used to
+ * do all of it inline behind a `logWarning`, which is how a missing table went
+ * unnoticed for a week.
  */
 export async function POST(request: Request) {
   const auth = await validateMcpAuth(request);
@@ -44,31 +44,25 @@ export async function POST(request: Request) {
 
   try {
     const upserted = await upsertTokenUsage(result.data.rows);
-    // Heal any stale-NULL orphans (priced models that were unpriceable at their
-    // original ingest) straight from stored tokens — independent of local logs.
-    // Best-effort: the write above is the primary, durable operation, so a
-    // pricing outage (models.dev down → `loadPricing` throws) must not turn a
-    // successful upsert into a caller-visible 500 with a stale cache.
-    let repriced: Awaited<ReturnType<typeof repriceUnpricedTokenUsage>> | null =
-      null;
+
+    // Fire-and-forget: `start` returns as soon as the run is enqueued. The
+    // upsert above is the durable operation, so a scheduling failure must not
+    // turn a successful write into a caller-visible 500.
+    let syncRunId: string | null = null;
     try {
-      // Refresh the registry from live sources + overrides so prod prices from
-      // the same merged snapshot the local ingest does; then reprice.
-      await syncModelRegistry();
-      repriced = await repriceUnpricedTokenUsage(await loadPricing());
+      const run = await start(syncModelRegistryWorkflow);
+      syncRunId = run.runId;
     } catch (error) {
-      logWarning("Skipped model sync/repricing during usage ingest", {
+      logWarning("Could not start the model registry sync workflow", {
         errorId: ERROR_IDS.USAGE_INGEST_FAILED,
         error: error instanceof Error ? error.message : String(error),
       });
     }
+
+    // Publish the rows just written. The workflow revalidates again once the
+    // registry lands, which is what refreshes display names.
     revalidateTag("usage", "max");
-    // `syncModelRegistry` above is also what supplies model/provider display
-    // names, which are cached separately under `models:providers` with a
-    // multi-day life. Without this the page would show refreshed costs beside
-    // stale (or, on a first sync, empty) names for up to that whole window.
-    revalidateTag("models:providers", "max");
-    return Response.json({ ok: true, upserted, repriced });
+    return Response.json({ ok: true, upserted, syncRunId });
   } catch (error) {
     return handleApiError(
       error,

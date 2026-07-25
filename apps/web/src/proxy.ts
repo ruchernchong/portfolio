@@ -49,5 +49,12 @@ export const proxy = (request: NextRequest, event: NextFetchEvent) => {
 };
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)", "/studio/:path*"],
+  // `.well-known/workflow/` must stay excluded: the Workflow runtime resumes
+  // suspended runs by POSTing to its own internal routes, and intercepting them
+  // here breaks execution (the docs call this out specifically for Next.js 16,
+  // where `proxy.ts` replaced `middleware.ts`).
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|.well-known/workflow/).*)",
+    "/studio/:path*",
+  ],
 };
