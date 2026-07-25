@@ -37,6 +37,13 @@ const GATEWAY_CACHE_KEY = "models:gateway";
 const OPENROUTER_CACHE_KEY = "models:openrouter";
 const SOURCE_CACHE_TTL = 86_400;
 
+/** Human-readable source names, for log lines and workflow step messages. */
+export const SOURCE_LABELS: Record<RegistrySource, string> = {
+  gateway: "AI Gateway",
+  openrouter: "OpenRouter",
+  "models.dev": "models.dev",
+};
+
 const PROVIDER_ALIASES: Record<string, string> = {
   ollama: "ollama-cloud",
 };
@@ -96,9 +103,9 @@ export async function syncModelRegistry(): Promise<{
   rows: number;
 }> {
   const [gateway, openrouter, modelsDev, overrides] = await Promise.all([
-    fetchGatewayEntries(),
-    fetchOpenRouterEntries(),
-    fetchModelsDevEntries(),
+    degradeOnFailure(SOURCE_LABELS.gateway, fetchGatewayEntries()),
+    degradeOnFailure(SOURCE_LABELS.openrouter, fetchOpenRouterEntries()),
+    degradeOnFailure(SOURCE_LABELS["models.dev"], fetchModelsDevEntries()),
     loadOverrideEntries(),
   ]);
 
@@ -119,11 +126,12 @@ export async function syncModelRegistry(): Promise<{
  * Warm one source's Redis cache and report how many entries it yielded.
  *
  * Split out so the sync workflow can fetch each source as an independently
- * retryable step. The entries themselves are deliberately *not* returned: a
- * workflow serialises every step result into its journal, and models.dev alone
- * normalises to ~5,800 entries. The subsequent merge step re-reads all three
- * from the Redis cache these calls populate, so only the counts need to cross a
- * step boundary.
+ * retryable step. **Rejects** when the source is unavailable, which is what
+ * makes that retry reachable — the caller degrades once retries run out. The
+ * entries themselves are deliberately *not* returned: a workflow serialises
+ * every step result into its journal, and models.dev alone normalises to ~5,800
+ * entries. The subsequent merge step re-reads all three from the Redis cache
+ * these calls populate, so only the counts need to cross a step boundary.
  */
 export async function refreshRegistrySource(
   source: RegistrySource,
@@ -148,10 +156,16 @@ function seedOverrides(dbOverrides: ModelEntry[]): ModelEntry[] {
 }
 
 /**
- * Fetch one JSON source through the Redis day-cache, normalise it, and degrade
- * to an empty layer on failure. An unavailable source must narrow the merge,
- * never fail the whole sync — the other layers plus the persisted table still
- * produce usable pricing.
+ * Fetch one JSON source through the Redis day-cache and normalise it.
+ *
+ * **Throws** on failure, deliberately. Degrading is the caller's decision, not
+ * this function's, because the two callers want it at different moments: the
+ * sync workflow lets the failure reach its step boundary so the step retries,
+ * and only degrades once those retries are exhausted, while
+ * {@link syncModelRegistry} has no retry machinery behind it and degrades at
+ * once through {@link degradeOnFailure}. Swallowing here made the workflow's
+ * per-source retry unreachable — the step always succeeded, with an empty
+ * layer, on the first transient error.
  */
 async function fetchSourceEntries<T>(
   label: string,
@@ -159,26 +173,38 @@ async function fetchSourceEntries<T>(
   cacheKey: string,
   normalise: (json: T) => ModelEntry[],
 ): Promise<ModelEntry[]> {
-  try {
-    // Read the cache in its own guard. Folding it into the outer try would let
-    // an unreachable or unconfigured Redis discard the source entirely, even
-    // though the HTTP fetch below would have succeeded — which is exactly what
-    // happened on a local ingest run with no Redis credentials: every Codex
-    // model lost pricing because AI Gateway is its only source.
-    const cached = await readCache<T>(cacheKey);
-    if (cached) return normalise(cached);
+  // The cache read guards itself (see `readCache`): an unreachable or
+  // unconfigured Redis must not discard the source when the HTTP fetch below
+  // would have succeeded — which is exactly what happened on a local ingest run
+  // with no Redis credentials, where every Codex model lost pricing because AI
+  // Gateway is its only source.
+  const cached = await readCache<T>(cacheKey);
+  if (cached) return normalise(cached);
 
-    const response = await fetch(url);
-    if (!response.ok) {
-      throw new Error(`${label} returned ${response.status}`);
-    }
-    const json = (await response.json()) as T;
-    try {
-      await redis.set(cacheKey, json, { ex: SOURCE_CACHE_TTL });
-    } catch {
-      // Pricing can still be built from the fresh response if Redis is down.
-    }
-    return normalise(json);
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`${label} returned ${response.status}`);
+  }
+  const json = (await response.json()) as T;
+  try {
+    await redis.set(cacheKey, json, { ex: SOURCE_CACHE_TTL });
+  } catch {
+    // Pricing can still be built from the fresh response if Redis is down.
+  }
+  return normalise(json);
+}
+
+/**
+ * Degrade one source to an empty layer. An unavailable source narrows the
+ * merge; the other layers plus the persisted table still produce usable
+ * pricing, so this must never fail the whole sync.
+ */
+async function degradeOnFailure(
+  label: string,
+  entries: Promise<ModelEntry[]>,
+): Promise<ModelEntry[]> {
+  try {
+    return await entries;
   } catch (error) {
     logWarning(`Skipped ${label} source during model registry sync`, {
       error: error instanceof Error ? error.message : String(error),
@@ -205,20 +231,14 @@ function fetchOpenRouterEntries(): Promise<ModelEntry[]> {
   );
 }
 
+/** Throws on failure, for the same reason as {@link fetchSourceEntries}. */
 async function fetchModelsDevEntries(): Promise<ModelEntry[]> {
-  try {
-    const cached = await getCachedPricingApi();
-    if (cached) return normaliseModelsDev(cached);
+  const cached = await getCachedPricingApi();
+  if (cached) return normaliseModelsDev(cached);
 
-    const api = await fetchModelsApi();
-    await cachePricingApi(api);
-    return normaliseModelsDev(api);
-  } catch (error) {
-    logWarning("Skipped models.dev source during model registry sync", {
-      error: error instanceof Error ? error.message : String(error),
-    });
-    return [];
-  }
+  const api = await fetchModelsApi();
+  await cachePricingApi(api);
+  return normaliseModelsDev(api);
 }
 
 async function loadOverrideEntries(): Promise<ModelEntry[]> {
