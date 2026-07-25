@@ -140,6 +140,41 @@ describe("normaliseAIGateway", () => {
     expect(entries[0].releaseDate).toBeUndefined();
     expect(entries[0].rate).toMatchObject({ input: 1, output: 2 });
   });
+
+  it("should accept a price encoded as a number rather than a string", () => {
+    // These payloads are `as`-cast from response.json(), so nothing enforces
+    // the string encoding at runtime, and number is the more natural JSON
+    // encoding for a price — models.dev already sends its costs that way.
+    const [entry] = normaliseAIGateway({
+      data: [
+        { id: "openai/numeric", pricing: { input: 0.000005, output: 0.00001 } },
+      ],
+    });
+    expect(entry.rate).toMatchObject({ input: 5, output: 10 });
+  });
+
+  it("should confine a malformed entry to itself, not drop the source", () => {
+    // A throw escaping the normaliser is caught by the caller's outer handler,
+    // which discards every entry from that source. Losing AI Gateway costs
+    // pricing on every Codex model, since it is their only source.
+    const entries = normaliseAIGateway({
+      data: [
+        {
+          id: "openai/good-1",
+          pricing: { input: "0.000001", output: "0.000002" },
+        },
+        { id: "openai/hostile", pricing: { input: {}, output: [] } as never },
+        {
+          id: "openai/good-2",
+          pricing: { input: "0.000003", output: "0.000004" },
+        },
+      ],
+    });
+    expect(entries).toHaveLength(3);
+    expect(entries[0].rate).toMatchObject({ input: 1, output: 2 });
+    expect(entries[1].rate).toBeUndefined();
+    expect(entries[2].rate).toMatchObject({ input: 3, output: 4 });
+  });
 });
 
 describe("normaliseOpenRouter", () => {
