@@ -182,14 +182,33 @@ export function canonicalSlug(slug: string): string {
     .replace(/[^a-z0-9]/g, "");
 }
 
-/** Prices arrive as per-token decimal strings; the registry stores USD/1M. */
-const perTokenStr = (v?: string): number | undefined =>
-  v == null ? undefined : Number(v) * 1_000_000;
+/**
+ * Prices arrive as per-token decimal strings; the registry stores USD/1M.
+ *
+ * Anything that is not a finite number becomes `undefined` rather than being
+ * passed through. `Number("")` is `0` and `Number("n/a")` is `NaN`, and both
+ * would otherwise survive the `!= null` checks downstream — Postgres `numeric`
+ * accepts `'NaN'`, so a malformed price would persist and silently poison every
+ * cost computed from it. A genuine zero (free models) is finite and kept.
+ */
+const perTokenStr = (v?: string): number | undefined => {
+  if (v == null || v.trim() === "") return undefined;
+  const perMillion = Number(v) * 1_000_000;
+  return Number.isFinite(perMillion) ? perMillion : undefined;
+};
 
-const isoDay = (unixSeconds?: number): string | undefined =>
-  unixSeconds == null
+/**
+ * Unix seconds → `YYYY-MM-DD`, or `undefined` if the value is not a real date.
+ * `toISOString()` throws a RangeError on an out-of-range date, and that throw
+ * would escape the normaliser and take the entire source down with it.
+ */
+const isoDay = (unixSeconds?: number): string | undefined => {
+  if (unixSeconds == null) return undefined;
+  const date = new Date(unixSeconds * 1000);
+  return Number.isNaN(date.getTime())
     ? undefined
-    : new Date(unixSeconds * 1000).toISOString().slice(0, 10);
+    : date.toISOString().slice(0, 10);
+};
 
 // --- Vercel AI Gateway -------------------------------------------------------
 

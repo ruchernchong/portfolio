@@ -95,6 +95,51 @@ describe("normaliseAIGateway", () => {
   it("should skip entries with no owner prefix", () => {
     expect(normaliseAIGateway({ data: [{ id: "bare-model" }] })).toEqual([]);
   });
+
+  it("should drop malformed prices rather than storing NaN", () => {
+    // Postgres `numeric` accepts 'NaN', so an unguarded NaN would persist and
+    // silently poison every cost computed from it.
+    const [entry] = normaliseAIGateway({
+      data: [
+        {
+          id: "openai/broken",
+          pricing: { input: "n/a", output: "0.00001" },
+        },
+      ],
+    });
+    expect(entry.rate).toBeUndefined();
+  });
+
+  it("should treat an empty price string as unknown, not free", () => {
+    const [entry] = normaliseAIGateway({
+      data: [{ id: "openai/blank", pricing: { input: "", output: "" } }],
+    });
+    expect(entry.rate).toBeUndefined();
+  });
+
+  it("should keep a genuine zero price", () => {
+    const [entry] = normaliseAIGateway({
+      data: [{ id: "openai/free", pricing: { input: "0", output: "0" } }],
+    });
+    expect(entry.rate).toMatchObject({ input: 0, output: 0 });
+  });
+
+  it("should survive an out-of-range release timestamp", () => {
+    // `toISOString()` throws a RangeError on an invalid date; letting it escape
+    // would take the whole source down, not just this entry.
+    const entries = normaliseAIGateway({
+      data: [
+        {
+          id: "openai/bad-date",
+          released: Number.MAX_SAFE_INTEGER,
+          pricing: { input: "0.000001", output: "0.000002" },
+        },
+      ],
+    });
+    expect(entries).toHaveLength(1);
+    expect(entries[0].releaseDate).toBeUndefined();
+    expect(entries[0].rate).toMatchObject({ input: 1, output: 2 });
+  });
 });
 
 describe("normaliseOpenRouter", () => {

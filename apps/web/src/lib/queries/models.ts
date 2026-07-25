@@ -133,7 +133,12 @@ async function fetchSourceEntries<T>(
   normalise: (json: T) => ModelEntry[],
 ): Promise<ModelEntry[]> {
   try {
-    const cached = await redis.get<T>(cacheKey);
+    // Read the cache in its own guard. Folding it into the outer try would let
+    // an unreachable or unconfigured Redis discard the source entirely, even
+    // though the HTTP fetch below would have succeeded — which is exactly what
+    // happened on a local ingest run with no Redis credentials: every Codex
+    // model lost pricing because AI Gateway is its only source.
+    const cached = await readCache<T>(cacheKey);
     if (cached) return normalise(cached);
 
     const response = await fetch(url);
@@ -286,12 +291,21 @@ async function fetchModelsApi(): Promise<ModelsApi> {
   return (await response.json()) as ModelsApi;
 }
 
-async function getCachedPricingApi(): Promise<ModelsDevApi | null> {
+/**
+ * Read a cached source payload, treating any Redis failure as a cache miss.
+ * The cache is an optimisation, never a dependency: a miss costs one HTTP
+ * fetch, whereas an error propagating out of the caller costs the whole source.
+ */
+async function readCache<T>(cacheKey: string): Promise<T | null> {
   try {
-    return await redis.get<ModelsDevApi>(MODELS_PRICING_CACHE_KEY);
+    return await redis.get<T>(cacheKey);
   } catch {
     return null;
   }
+}
+
+function getCachedPricingApi(): Promise<ModelsDevApi | null> {
+  return readCache<ModelsDevApi>(MODELS_PRICING_CACHE_KEY);
 }
 
 async function cachePricingApi(api: ModelsDevApi): Promise<void> {
