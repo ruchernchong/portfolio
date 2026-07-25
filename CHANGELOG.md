@@ -1,3 +1,9 @@
+## [1.29.2](https://github.com/ruchernchong/blog/compare/v1.29.1...v1.29.2) (2026-07-25)
+
+### Bug Fixes
+
+* escape raw NUL separators in the model registry ([847f1ea](https://github.com/ruchernchong/blog/commit/847f1ea3bf72b0f82a4430ac7f3d8d1e46991feb)), closes [#341](https://github.com/ruchernchong/blog/issues/341)
+
 ## [1.29.1](https://github.com/ruchernchong/blog/compare/v1.29.0...v1.29.1) (2026-07-24)
 
 ### Bug Fixes
