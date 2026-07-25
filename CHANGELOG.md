@@ -1,3 +1,10 @@
+## [1.30.0](https://github.com/ruchernchong/blog/compare/v1.29.2...v1.30.0) (2026-07-25)
+
+### Features
+
+* replace LiteLLM with AI Gateway and OpenRouter ([5190a7a](https://github.com/ruchernchong/blog/commit/5190a7a431838420ba17aa38eabe135a07232f42)), closes [#342](https://github.com/ruchernchong/blog/issues/342)
+* treat Redis failures as cache misses ([08f2dce](https://github.com/ruchernchong/blog/commit/08f2dce5446d28304edcb35ab04ca9918c2f7f6a)), closes [#342](https://github.com/ruchernchong/blog/issues/342)
+
 ## [1.29.2](https://github.com/ruchernchong/blog/compare/v1.29.1...v1.29.2) (2026-07-25)
 
 ### Bug Fixes
