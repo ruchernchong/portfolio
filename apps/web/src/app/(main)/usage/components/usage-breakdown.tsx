@@ -370,18 +370,22 @@ interface ProviderOption {
 
 function BreakdownToolbar({
   columnOptions,
+  onFreeFilterChange,
   onProviderFilterChange,
   onSearchChange,
   onVisibleColumnsChange,
+  freeFilter,
   providerFilter,
   providerOptions,
   search,
   visibleColumns,
 }: {
   columnOptions: { id: string; label: string }[];
+  onFreeFilterChange: (value: string) => void;
   onProviderFilterChange: (value: string) => void;
   onSearchChange: (value: string) => void;
   onVisibleColumnsChange: (keys: DataGridSelection) => void;
+  freeFilter: string;
   providerFilter: string;
   providerOptions: ProviderOption[];
   search: string;
@@ -401,6 +405,16 @@ function BreakdownToolbar({
           <SearchField.ClearButton />
         </SearchField.Group>
       </SearchField>
+      <Button
+        size="sm"
+        variant={freeFilter === "free" ? "primary" : "outline"}
+        onPress={() =>
+          onFreeFilterChange(freeFilter === "free" ? "all" : "free")
+        }
+        aria-pressed={freeFilter === "free"}
+      >
+        Free
+      </Button>
       {providerOptions.length > 0 && (
         <Dropdown>
           <Button size="sm" variant="outline">
@@ -600,6 +614,7 @@ export function UsageBreakdown({
   const [selectedKey, setSelectedKey] = useState<string>(views[0]?.id);
   const [search, setSearch] = useState("");
   const [providerFilter, setProviderFilter] = useState("all");
+  const [freeFilter, setFreeFilter] = useState("all");
   const [visibleColumns, setVisibleColumns] = useState<DataGridSelection>(
     new Set(HIDEABLE_COLUMNS.map((column) => column.id)),
   );
@@ -613,10 +628,16 @@ export function UsageBreakdown({
 
   const active = views.find((view) => view.id === selectedKey) ?? views[0];
 
+  const handleFreeFilterChange = (value: string) => {
+    setFreeFilter(value);
+    setPage(1);
+  };
+
   const handleViewChange = (key: string) => {
     setSelectedKey(key);
     setSearch("");
     setProviderFilter("all");
+    setFreeFilter("all");
     setSortDescriptor(DEFAULT_SORT_DESCRIPTOR);
     setPage(1);
     setGridMinHeight(undefined);
@@ -651,6 +672,7 @@ export function UsageBreakdown({
   const handleClearFilters = () => {
     setSearch("");
     setProviderFilter("all");
+    setFreeFilter("all");
     setPage(1);
   };
 
@@ -702,8 +724,24 @@ export function UsageBreakdown({
       rows = rows.filter((row) => rowProviders(row).includes(providerFilter));
     }
 
+    if (freeFilter !== "all") {
+      rows = rows.filter((row) => {
+        if (freeFilter === "free") {
+          return row.cost === 0 || row.cost === null;
+        }
+        return row.cost !== 0 && row.cost !== null;
+      });
+    }
+
     return rows;
-  }, [active, modelDisplayNames, providerDisplayNames, providerFilter, search]);
+  }, [
+    active,
+    modelDisplayNames,
+    providerDisplayNames,
+    providerFilter,
+    search,
+    freeFilter,
+  ]);
 
   const sortedRows = useMemo(
     () =>
@@ -765,7 +803,8 @@ export function UsageBreakdown({
       ? HIDEABLE_COLUMNS.filter((column) => column.id !== "provider")
       : HIDEABLE_COLUMNS;
 
-  const hasActiveFilters = search !== "" || providerFilter !== "all";
+  const hasActiveFilters =
+    search !== "" || providerFilter !== "all" || freeFilter !== "all";
 
   return (
     <Card className={className}>
@@ -795,9 +834,11 @@ export function UsageBreakdown({
       <Card.Content className="flex flex-col gap-4">
         <BreakdownToolbar
           columnOptions={columnOptions}
+          onFreeFilterChange={handleFreeFilterChange}
           onProviderFilterChange={handleProviderFilterChange}
           onSearchChange={handleSearchChange}
           onVisibleColumnsChange={handleVisibleColumnsChange}
+          freeFilter={freeFilter}
           providerFilter={providerFilter}
           providerOptions={providerOptions}
           search={search}
@@ -810,6 +851,13 @@ export function UsageBreakdown({
                 clearLabel="Clear search"
                 label={`Search: ${search}`}
                 onClear={() => handleSearchChange("")}
+              />
+            )}
+            {freeFilter !== "all" && (
+              <FilterChip
+                clearLabel="Clear free filter"
+                label="Free"
+                onClear={() => handleFreeFilterChange("all")}
               />
             )}
             {providerFilter !== "all" && (
