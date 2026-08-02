@@ -1,3 +1,13 @@
+## [1.32.0](https://github.com/ruchernchong/blog/compare/v1.31.0...v1.32.0) (2026-08-02)
+
+### Features
+
+* add Free toggle filter to usage breakdown ([945b6da](https://github.com/ruchernchong/blog/commit/945b6da7f6dd1a8d370a68c8198553572b1d155b))
+
+### Bug Fixes
+
+* make the registry sync retry a dead source ([98ecc42](https://github.com/ruchernchong/blog/commit/98ecc420d99c8a9bd876f2c0cef5a3b0ab50fef8)), closes [#353](https://github.com/ruchernchong/blog/issues/353)
+
 ## [1.31.0](https://github.com/ruchernchong/blog/compare/v1.30.0...v1.31.0) (2026-07-25)
 
 ### Features
