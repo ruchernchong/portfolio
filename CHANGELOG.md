@@ -1,3 +1,9 @@
+## [1.33.1](https://github.com/ruchernchong/blog/compare/v1.33.0...v1.33.1) (2026-08-03)
+
+### Bug Fixes
+
+* use Cursor brand cube for usage provider logo ([db94e2f](https://github.com/ruchernchong/blog/commit/db94e2fca601ac2f568529ae8d3c3b6dd41143a0))
+
 ## [1.33.0](https://github.com/ruchernchong/blog/compare/v1.32.0...v1.33.0) (2026-08-03)
 
 ### Features
