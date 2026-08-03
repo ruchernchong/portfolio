@@ -1,3 +1,9 @@
+## [1.33.0](https://github.com/ruchernchong/blog/compare/v1.32.0...v1.33.0) (2026-08-03)
+
+### Features
+
+* recognise Cursor as a provider on /usage ([5a78f07](https://github.com/ruchernchong/blog/commit/5a78f0728da2f8458dd88d2bf4d2a07f5e6c0ce7))
+
 ## [1.32.0](https://github.com/ruchernchong/blog/compare/v1.31.0...v1.32.0) (2026-08-02)
 
 ### Features
