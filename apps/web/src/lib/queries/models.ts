@@ -50,6 +50,7 @@ const PROVIDER_ALIASES: Record<string, string> = {
 
 const FALLBACK_PROVIDER_NAMES: Record<string, string> = {
   anthropic: "Anthropic",
+  cursor: "Cursor",
   "fireworks-ai": "Fireworks AI",
   google: "Google",
   ollama: "Ollama Cloud",

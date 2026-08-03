@@ -7,7 +7,7 @@
  */
 
 /** Known agents. Parsers self-register; this is just for nicer typing/labels. */
-export type Agent = "claude" | "codex" | "opencode";
+export type Agent = "claude" | "codex" | "cursor" | "opencode";
 
 /**
  * Inference provider that bills the tokens. Usually derived from the agent, but
