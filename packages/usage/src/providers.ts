@@ -21,7 +21,21 @@ const MODELS_DEV_LOGO_PROVIDER_IDS: Record<string, string> = {
   ollama: "ollama-cloud",
 };
 
+/**
+ * Full logo URL overrides for providers where models.dev ships the wrong asset
+ * (or none). Paths are site-root relative and resolved by the web app.
+ */
+const PROVIDER_LOGO_OVERRIDES: Record<string, string> = {
+  // models.dev/logos/cursor.svg is a sparkles icon, not the Cursor brand cube
+  cursor: "/images/cursor-logo.svg",
+};
+
 export function providerLogoUrl(provider: string): string {
+  const override = PROVIDER_LOGO_OVERRIDES[provider];
+  if (override) {
+    return override;
+  }
+
   const providerId = MODELS_DEV_LOGO_PROVIDER_IDS[provider] ?? provider;
 
   return `https://models.dev/logos/${encodeURIComponent(providerId)}.svg`;

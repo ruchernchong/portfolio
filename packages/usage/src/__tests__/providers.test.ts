@@ -1,4 +1,8 @@
-import { providerForAgent, resolveProvider } from "../providers";
+import {
+  providerForAgent,
+  providerLogoUrl,
+  resolveProvider,
+} from "../providers";
 
 describe("providerForAgent", () => {
   it("should map known single-provider agents", () => {
@@ -8,6 +12,24 @@ describe("providerForAgent", () => {
 
   it("should fall back to the agent key for an unmapped agent", () => {
     expect(providerForAgent("opencode")).toBe("opencode");
+  });
+});
+
+describe("providerLogoUrl", () => {
+  it("should use the local Cursor brand mark instead of models.dev", () => {
+    expect(providerLogoUrl("cursor")).toBe("/images/cursor-logo.svg");
+  });
+
+  it("should remap models.dev logo ids when needed", () => {
+    expect(providerLogoUrl("ollama")).toBe(
+      "https://models.dev/logos/ollama-cloud.svg",
+    );
+  });
+
+  it("should default to the models.dev logo path", () => {
+    expect(providerLogoUrl("anthropic")).toBe(
+      "https://models.dev/logos/anthropic.svg",
+    );
   });
 });
 
