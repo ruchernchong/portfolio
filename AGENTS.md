@@ -1,6 +1,6 @@
-# CLAUDE.md
+# AGENTS.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to coding agents when working with code in this repository.
 
 ## Commands
 
@@ -123,7 +123,7 @@ A pnpm/Turborepo monorepo for the Next.js 16 portfolio website, private MCP serv
 - **Cache**: Upstash Redis for related posts, analytics, and post statistics
 - **Styling**: Tailwind CSS v4
 - **Testing**: Vitest with React Testing Library
-- **Code Quality**: Biome for linting/formatting, TypeScript 7 (strict mode; `experimental.useTypeScriptCli`)
+- **Code Quality**: Biome for linting/formatting, TypeScript 7 (strict mode)
 
 ### Key Features
 

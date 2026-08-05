@@ -43,7 +43,7 @@ catalogs:
       specifier: ^4.3.0
       version: 4.3.2
     typescript:
-      specifier: ^7
+      specifier: 7.0.2
       version: 7.0.2
 
 overrides:

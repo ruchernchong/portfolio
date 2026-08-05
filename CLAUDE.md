@@ -1,3 +1,5 @@
+@AGENTS.md
+
 # CLAUDE.md
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
@@ -182,7 +184,7 @@ A pnpm/Turborepo monorepo for the Next.js 16 portfolio website, private MCP serv
 - **UI**: HeroUI v3 — Pro (`@heroui-pro/react`) + OSS (`@heroui/react`)
 - **Styling**: Tailwind CSS v4
 - **Testing**: Vitest with React Testing Library
-- **Code Quality**: Biome for linting/formatting, TypeScript 7 (strict mode; `experimental.useTypeScriptCli`)
+- **Code Quality**: Biome for linting/formatting, TypeScript 7 (strict mode)
 
 ### Key Features
 
