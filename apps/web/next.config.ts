@@ -53,7 +53,6 @@ const nextConfig: NextConfig = {
   typedRoutes: true,
   experimental: {
     mcpServer: true,
-    turbopackFileSystemCacheForBuild: true,
     turbopackRustReactCompiler: true,
     typedEnv: true,
   },
