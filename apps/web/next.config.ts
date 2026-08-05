@@ -55,6 +55,7 @@ const nextConfig: NextConfig = {
     mcpServer: true,
     turbopackRustReactCompiler: true,
     typedEnv: true,
+    useOffline: true,
   },
   async headers() {
     return [
