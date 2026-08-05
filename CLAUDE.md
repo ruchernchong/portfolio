@@ -39,6 +39,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `pnpm test` - Run all tests
 - `pnpm test:watch` - Run tests in watch mode
 - `pnpm --filter @workspace/web test <path>` - Run a specific web test file
+- `pnpm --filter @workspace/web test:e2e:instant` - Playwright Instant Navigations guard (`/blog` → post shell via `@next/playwright` `instant()`). Needs `next dev` (or set `PLAYWRIGHT_BASE_URL`); reuses `https://blog.localhost` when already running
 
 ### Release
 
