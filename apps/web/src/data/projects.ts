@@ -2,8 +2,8 @@ import type { Project } from "@/types";
 
 const projects: Project[] = [
   {
-    name: "SG Cars Trends",
-    slug: "sgcarstrends",
+    name: "MotorMetrics",
+    slug: "motormetrics",
     description:
       "Statistics and analytics platform for car trends in Singapore. Data sourced from Land Transport Authority (LTA).",
     skills: [
@@ -16,8 +16,8 @@ const projects: Project[] = [
       "Upstash Redis",
     ],
     links: [
-      "https://sgcarstrends.com",
-      "https://github.com/sgcarstrends/sgcarstrends",
+      "https://motormetrics.app",
+      "https://github.com/motormetrics/motormetrics",
     ],
     featured: true,
   },
