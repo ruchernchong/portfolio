@@ -23,7 +23,7 @@ import type {
   ModelDayBreakdown,
 } from "@workspace/usage/types";
 import { format, parseISO } from "date-fns";
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 interface HeatmapGridClientProps {
   layout: HeatmapLayout;
@@ -53,6 +53,45 @@ export function HeatmapGridClient({
 }: HeatmapGridClientProps) {
   const { weeks, monthLabels } = layout;
   const [preview, setPreview] = useState<DayContribution | null>(null);
+  const scrollerRef = useRef<HTMLDivElement>(null);
+
+  // The day worth opening on: today while viewing the year that contains it,
+  // otherwise the last day of that year. Deriving it as a plain date also gives
+  // the effect below a dependency that changes on a year switch.
+  const anchorDate = useMemo(() => {
+    const dates = weeks.flatMap((week) =>
+      week.map((cell) => cell.date).filter((date) => date !== null),
+    );
+    return today && dates.includes(today) ? today : (dates.at(-1) ?? null);
+  }, [weeks, today]);
+
+  // When the year does not fit, opening on January is the least useful view: in
+  // August that is eight months of empty cells. Assigning scrollLeft keeps this
+  // inside the scroller, where `scrollIntoView` would drag the whole page down
+  // to the heatmap on load.
+  useEffect(() => {
+    const scroller = scrollerRef.current;
+    if (!scroller || !anchorDate) {
+      return;
+    }
+
+    const furthest = scroller.scrollWidth - scroller.clientWidth;
+    if (furthest <= 0) {
+      return;
+    }
+
+    const anchor = scroller.querySelector(`[data-date="${anchorDate}"]`);
+    if (!anchor) {
+      scroller.scrollLeft = furthest;
+      return;
+    }
+
+    // Right-align the anchor, so the run-up to it is what fills the view.
+    const cell = anchor.getBoundingClientRect();
+    const view = scroller.getBoundingClientRect();
+    const offset = cell.right - view.left + scroller.scrollLeft;
+    scroller.scrollLeft = Math.min(furthest, offset - scroller.clientWidth);
+  }, [anchorDate]);
 
   // One stretchable column per week so the grid fills its container's full
   // width; cells stay square via `aspect-square`. The floor matters more than
@@ -73,7 +112,10 @@ export function HeatmapGridClient({
           A thumb needs more than a cursor does, so phones get the larger floor
           and scroll. From `sm` up the floor sits under the width a desktop card
           settles at, leaving those layouts filling their container as before. */}
-      <div className="flex flex-col gap-2 overflow-x-auto p-1.5 [--heatmap-cell:16px] sm:[--heatmap-cell:10px]">
+      <div
+        className="flex flex-col gap-2 overflow-x-auto p-1.5 [--heatmap-cell:16px] sm:[--heatmap-cell:10px]"
+        ref={scrollerRef}
+      >
         {/* Month labels: one slot per week column, label at its start column. */}
         <div
           className="grid gap-1 text-muted text-xs"
@@ -159,6 +201,7 @@ function Cell({
     return (
       <div
         className={cn("aspect-square w-full rounded-sm", INTENSITY_CLASSES[0])}
+        data-date={day.date}
       />
     );
   }
@@ -171,6 +214,8 @@ function Cell({
     <Popover>
       <Popover.Trigger
         aria-label={`${isToday ? "Today, " : ""}${label}: ${formatTokens(day.totals.tokens)} tokens, ${formatCost(day.totals.cost)}, ${formatNumber(day.totals.messages)} messages`}
+        // Scroll anchor for the grid; see the effect in HeatmapGridClient.
+        data-date={day.date}
         onBlur={() => onPreview(null)}
         onFocus={() => onPreview(day)}
         onPointerEnter={() => onPreview(day)}
