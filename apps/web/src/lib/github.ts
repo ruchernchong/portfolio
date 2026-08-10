@@ -123,6 +123,55 @@ export const getGitHubContributions = async (): Promise<GitHubProfile> => {
   return data.user as GitHubProfile;
 };
 
+// GitHub caps contributionsCollection at a 1-year span, and its per-query
+// resource budget is content-dependent — heavy years (plus Apollo's injected
+// __typename fields) trip RESOURCE_LIMITS_EXCEEDED when batched. Query one year
+// per request instead. `no-cache` avoids Apollo normalising the id-less User
+// across requests (which errors on merge); Next's "use cache" is the real
+// cache. A failed year contributes 0 rather than zeroing the sum.
+const fetchCommitsForYear = async (year: number): Promise<number> =>
+  gqlClient
+    .query<{
+      user: {
+        contributionsCollection: { totalCommitContributions: number };
+      };
+    }>({
+      fetchPolicy: "no-cache",
+      query: gql`
+        {
+          user(login: "${GITHUB_USERNAME}") {
+            contributionsCollection(from: "${year}-01-01T00:00:00Z", to: "${year}-12-31T23:59:59Z") {
+              totalCommitContributions
+            }
+          }
+        }
+      `,
+    })
+    .then(
+      ({ data }) =>
+        data.user?.contributionsCollection?.totalCommitContributions ?? 0,
+    )
+    .catch(() => 0);
+
+// A finished year's commit count never changes, so cache it forever. This keeps
+// the daily refresh of the total down to one live request instead of one per
+// year since 2014.
+const getCommitsForClosedYear = async (year: number): Promise<number> => {
+  "use cache";
+  cacheLife("max");
+  cacheTag(`github:commits:${year}`);
+
+  return fetchCommitsForYear(year);
+};
+
+const getCommitsForCurrentYear = async (year: number): Promise<number> => {
+  "use cache";
+  cacheLife("days");
+  cacheTag(`github:commits:${year}`);
+
+  return fetchCommitsForYear(year);
+};
+
 export const getGitHubTotalCommits = async (): Promise<number> => {
   "use cache";
   cacheLife("days");
@@ -135,36 +184,11 @@ export const getGitHubTotalCommits = async (): Promise<number> => {
     (_, i) => START_YEAR + i,
   );
 
-  // GitHub caps contributionsCollection at a 1-year span, and its per-query
-  // resource budget is content-dependent — heavy years (plus Apollo's injected
-  // __typename fields) trip RESOURCE_LIMITS_EXCEEDED when batched. Query one
-  // year per request in parallel instead. `no-cache` avoids Apollo normalising
-  // the id-less User across requests (which errors on merge); Next's "use cache"
-  // is the real cache. A failed year contributes 0 rather than zeroing the sum.
   const counts = await Promise.all(
     years.map((year) =>
-      gqlClient
-        .query<{
-          user: {
-            contributionsCollection: { totalCommitContributions: number };
-          };
-        }>({
-          fetchPolicy: "no-cache",
-          query: gql`
-            {
-              user(login: "${GITHUB_USERNAME}") {
-                contributionsCollection(from: "${year}-01-01T00:00:00Z", to: "${year}-12-31T23:59:59Z") {
-                  totalCommitContributions
-                }
-              }
-            }
-          `,
-        })
-        .then(
-          ({ data }) =>
-            data.user?.contributionsCollection?.totalCommitContributions ?? 0,
-        )
-        .catch(() => 0),
+      year === currentYear
+        ? getCommitsForCurrentYear(year)
+        : getCommitsForClosedYear(year),
     ),
   );
 
@@ -172,6 +196,10 @@ export const getGitHubTotalCommits = async (): Promise<number> => {
 };
 
 export const getGitHubFollowers = async (): Promise<number> => {
+  "use cache";
+  cacheLife("hours");
+  cacheTag("github:followers");
+
   try {
     const { data } = await octokit.rest.users.getByUsername({
       username: GITHUB_USERNAME,
