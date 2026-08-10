@@ -53,6 +53,13 @@ export interface AgentDayBreakdown {
   messages: number;
 }
 
+/** Per-model slice of a single day, for the heatmap day breakdown. */
+export interface ModelDayBreakdown {
+  model: string;
+  tokens: number;
+  cost: Cost;
+}
+
 /** One day in the contribution heatmap. */
 export interface DayContribution {
   /** YYYY-MM-DD */
@@ -66,6 +73,11 @@ export interface DayContribution {
   intensity: 0 | 1 | 2 | 3 | 4;
   tokenBreakdown: TokenBreakdown;
   agents: AgentDayBreakdown[];
+  /**
+   * The day's biggest models by tokens, largest first. Capped
+   * (`MODELS_PER_DAY`) because every day of the year ships to the client.
+   */
+  models: ModelDayBreakdown[];
 }
 
 export interface YearSummary {

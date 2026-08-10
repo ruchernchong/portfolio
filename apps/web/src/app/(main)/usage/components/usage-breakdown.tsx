@@ -529,7 +529,12 @@ function BreakdownPagination({
   rowsPerPage: number;
 }) {
   return (
-    <div className="flex items-center justify-between gap-4 whitespace-nowrap text-xs">
+    // Stacks rather than overflows: the pager plus the rows-per-page select
+    // need ~410px, and `whitespace-nowrap` on a single row pushed that width
+    // onto the page itself, scrolling every section sideways on a phone.
+    // Stacking beats wrapping here because the pager grows to fill the row,
+    // which would wrap the select onto its own line at every width.
+    <div className="flex flex-col gap-2 whitespace-nowrap text-xs sm:flex-row sm:items-center sm:justify-between sm:gap-4">
       <Pagination size="sm">
         <Pagination.Content>
           <Pagination.Item>
