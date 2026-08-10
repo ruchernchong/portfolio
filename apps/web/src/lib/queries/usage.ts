@@ -3,6 +3,7 @@ import type {
   AgentDayBreakdown,
   Cost,
   DayContribution,
+  ModelDayBreakdown,
   TokenBreakdown,
   UsageBreakdownRow,
   UsageProfile,
@@ -200,6 +201,7 @@ export async function getUsageProfile(): Promise<UsageProfile> {
     addTokens(day.breakdown, row);
 
     addToRollup(getOrCreateRollup(day.agents, row.agent), row);
+    addToRollup(getOrCreateRollup(day.models, row.model), row);
     addToRollup(getOrCreateRollup(agentTotals, row.agent), row);
     addToRollup(getOrCreateRollup(providerTotals, row.provider), row);
     addToRollup(getOrCreateRollup(modelTotals, row.model), row);
@@ -258,6 +260,7 @@ interface DayAggregate {
   costValues: (string | null)[];
   breakdown: TokenBreakdown;
   agents: Map<string, RollupAggregate>;
+  models: Map<string, RollupAggregate>;
 }
 
 function emptyTokenBreakdown(): TokenBreakdown {
@@ -277,6 +280,7 @@ function getOrCreateDay(
       costValues: [],
       breakdown: emptyTokenBreakdown(),
       agents: new Map(),
+      models: new Map(),
     };
     map.set(date, day);
   }
@@ -369,6 +373,13 @@ function makeIntensityScale(
 
 // --- Dense contribution array -----------------------------------------------
 
+/**
+ * Models kept per day. Every day of the range ships to the client with the
+ * heatmap, so the tail is trimmed: the top few carry the story, and a day with
+ * more than this is a day where the rest are rounding errors.
+ */
+const MODELS_PER_DAY = 4;
+
 function buildDenseContributions(
   dayMap: Map<string, DayAggregate>,
   firstDate: string,
@@ -389,6 +400,7 @@ function buildDenseContributions(
         intensity: 0,
         tokenBreakdown: emptyTokenBreakdown(),
         agents: [],
+        models: [],
       });
       continue;
     }
@@ -402,6 +414,15 @@ function buildDenseContributions(
       }))
       .sort((a, b) => b.tokens - a.tokens);
 
+    const models: ModelDayBreakdown[] = [...day.models.entries()]
+      .map(([model, rollup]) => ({
+        model,
+        tokens: rollup.tokens,
+        cost: sumCost(rollup.costValues),
+      }))
+      .sort((a, b) => b.tokens - a.tokens)
+      .slice(0, MODELS_PER_DAY);
+
     contributions.push({
       date,
       totals: {
@@ -412,6 +433,7 @@ function buildDenseContributions(
       intensity: intensityOf(day.tokens),
       tokenBreakdown: day.breakdown,
       agents,
+      models,
     });
   }
 

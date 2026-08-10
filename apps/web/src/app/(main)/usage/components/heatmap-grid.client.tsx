@@ -1,6 +1,13 @@
 "use client";
 
-import { cn, Tooltip } from "@heroui/react";
+import { cn, Label, Meter, Popover } from "@heroui/react";
+import {
+  BubbleChatIcon,
+  DatabaseIcon,
+  DollarCircleIcon,
+} from "@hugeicons/core-free-icons";
+import type { IconSvgElement } from "@hugeicons/react";
+import { HugeiconsIcon } from "@hugeicons/react";
 import { INTENSITY_CLASSES } from "@workspace/usage";
 import {
   formatCost,
@@ -11,20 +18,37 @@ import type {
   HeatmapCell,
   HeatmapLayout,
 } from "@workspace/usage/heatmap-layout";
+import type {
+  DayContribution,
+  ModelDayBreakdown,
+} from "@workspace/usage/types";
 import { format, parseISO } from "date-fns";
+import { useState } from "react";
 
 interface HeatmapGridClientProps {
   layout: HeatmapLayout;
+  /** Registry slug → display name, for the per-day model rows. */
+  modelDisplayNames: Record<string, string>;
   today: string | null;
 }
 
 /**
  * Hand-rolled contribution grid: one CSS-grid column per week (Sun→Sat rows).
- * Only active days are wrapped in a HeroUI Tooltip, whose content renders lazily
- * on hover/focus, so the ~250-cell grid stays light.
+ * Only active days are pressable: each opens a HeroUI Popover with the day's
+ * totals as icon-led figures and the models that ran. The content renders
+ * lazily on open, so the ~250-cell grid stays light.
+ *
+ * A caption under the grid tracks the hovered/focused day and spells out the
+ * press affordance — a heatmap otherwise reads as decoration, and the popover
+ * is the only way to reach a day's breakdown.
  */
-export function HeatmapGridClient({ layout, today }: HeatmapGridClientProps) {
+export function HeatmapGridClient({
+  layout,
+  modelDisplayNames,
+  today,
+}: HeatmapGridClientProps) {
   const { weeks, monthLabels } = layout;
+  const [preview, setPreview] = useState<DayContribution | null>(null);
 
   // One stretchable column per week so the grid fills its container's full
   // width; cells stay square via `aspect-square`.
@@ -59,6 +83,8 @@ export function HeatmapGridClient({ layout, today }: HeatmapGridClientProps) {
           week.map((cell, dayIndex) => (
             <Cell
               cell={cell}
+              modelDisplayNames={modelDisplayNames}
+              onPreview={setPreview}
               today={today}
               // biome-ignore lint/suspicious/noArrayIndexKey: grid position is the identity
               key={`${weekIndex}-${dayIndex}`}
@@ -66,21 +92,48 @@ export function HeatmapGridClient({ layout, today }: HeatmapGridClientProps) {
           )),
         )}
       </div>
+
+      <p className="h-5 text-sm">
+        {preview ? (
+          <>
+            <span className="font-medium">
+              {format(parseISO(preview.date), "d MMM yyyy")}
+            </span>
+            <span className="text-muted">
+              {" · "}
+              {formatTokens(preview.totals.tokens)} tokens ·{" "}
+              {formatCost(preview.totals.cost)} · select for details
+            </span>
+          </>
+        ) : (
+          <span className="text-muted">Select any day for its breakdown.</span>
+        )}
+      </p>
     </div>
   );
 }
 
-function Cell({ cell, today }: { cell: HeatmapCell; today: string | null }) {
+function Cell({
+  cell,
+  modelDisplayNames,
+  onPreview,
+  today,
+}: {
+  cell: HeatmapCell;
+  modelDisplayNames: Record<string, string>;
+  onPreview: (day: DayContribution | null) => void;
+  today: string | null;
+}) {
   const day = cell.contribution;
 
   // Padding slot outside the calendar year: render a plain square so only real
-  // days expose activity stats on hover/focus.
+  // days expose activity stats.
   if (!day) {
     return <div className="aspect-square w-full rounded-sm bg-transparent" />;
   }
 
   // Future days carry no data yet; keep the base swatch so the year grid stays
-  // visually complete, but skip the tooltip and hover affordances.
+  // visually complete, but skip the popover and hover affordances.
   if (today && day.date > today) {
     return (
       <div
@@ -91,41 +144,119 @@ function Cell({ cell, today }: { cell: HeatmapCell; today: string | null }) {
 
   const label = format(parseISO(day.date), "d MMM yyyy");
   const isToday = day.date === today;
+  const heading = isToday ? `Today, ${label}` : label;
 
   return (
-    <Tooltip delay={0}>
-      <Tooltip.Trigger
+    <Popover>
+      <Popover.Trigger
         aria-label={`${isToday ? "Today, " : ""}${label}: ${formatTokens(day.totals.tokens)} tokens, ${formatCost(day.totals.cost)}, ${formatNumber(day.totals.messages)} messages`}
+        onBlur={() => onPreview(null)}
+        onFocus={() => onPreview(day)}
+        onPointerEnter={() => onPreview(day)}
+        onPointerLeave={() => onPreview(null)}
         className={cn(
-          "aspect-square w-full rounded-sm transition duration-150 ease-out hover:scale-125 hover:ring-2 hover:ring-accent/60 hover:ring-offset-1 hover:ring-offset-background focus:outline-none focus-visible:ring-2 focus-visible:ring-accent",
+          "aspect-square w-full cursor-pointer rounded-sm transition duration-150 ease-out hover:scale-125 hover:ring-2 hover:ring-accent/60 hover:ring-offset-1 hover:ring-offset-background focus:outline-none focus-visible:ring-2 focus-visible:ring-accent",
           INTENSITY_CLASSES[day.intensity],
           isToday &&
             "ring-2 ring-primary/70 ring-offset-1 ring-offset-background",
         )}
       />
-      <Tooltip.Content offset={8} showArrow>
-        <Tooltip.Arrow />
-        <div className="flex flex-col gap-1">
-          <p className="font-semibold">{isToday ? `Today, ${label}` : label}</p>
-          <p className="text-muted text-xs">
-            {formatTokens(day.totals.tokens)} tokens ·{" "}
-            {formatCost(day.totals.cost)} · {formatNumber(day.totals.messages)}{" "}
-            messages
-          </p>
-          {day.agents.length > 0 && (
-            <ul className="flex flex-col gap-0.5 text-xs">
-              {day.agents.map((agent) => (
-                <li className="flex justify-between gap-4" key={agent.agent}>
-                  <span>{agent.agent}</span>
-                  <span className="text-muted">
-                    {formatTokens(agent.tokens)} · {formatCost(agent.cost)}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      </Tooltip.Content>
-    </Tooltip>
+      {/* Sized to its content (capped), not a fixed width: the figures row is
+          the widest thing here and a five-figure cost would otherwise spill. */}
+      <Popover.Content className="w-max max-w-72" offset={8}>
+        <Popover.Dialog className="flex flex-col gap-3">
+          <Popover.Heading className="text-sm">{heading}</Popover.Heading>
+
+          <dl className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            <Stat
+              icon={DollarCircleIcon}
+              label="Cost"
+              value={formatCost(day.totals.cost)}
+            />
+            <Stat
+              icon={DatabaseIcon}
+              label="Tokens"
+              value={formatTokens(day.totals.tokens)}
+            />
+            <Stat
+              icon={BubbleChatIcon}
+              label="Messages"
+              value={formatNumber(day.totals.messages)}
+            />
+          </dl>
+
+          <ModelRows
+            displayNames={modelDisplayNames}
+            models={day.models}
+            total={day.totals.tokens}
+          />
+        </Popover.Dialog>
+      </Popover.Content>
+    </Popover>
+  );
+}
+
+/** Icon-led figure: the icon carries the meaning, the label is for readers. */
+function Stat({
+  icon,
+  label,
+  value,
+}: {
+  icon: IconSvgElement;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="flex items-center gap-1.5">
+      <HugeiconsIcon
+        className="size-4 shrink-0 text-muted"
+        icon={icon}
+        strokeWidth={1.5}
+      />
+      <dt className="sr-only">{label}</dt>
+      <dd className="whitespace-nowrap text-sm">{value}</dd>
+    </div>
+  );
+}
+
+/**
+ * What ran that day: the biggest models by tokens, with their token counts.
+ * Names come from the model registry when it has one, so a row reads
+ * "Claude Opus 4.5" rather than a routing slug.
+ */
+function ModelRows({
+  displayNames,
+  models,
+  total,
+}: {
+  displayNames: Record<string, string>;
+  models: ModelDayBreakdown[];
+  total: number;
+}) {
+  if (models.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      {models.map((model) => (
+        // Measured against the whole day, so bars stopping short of full width
+        // is itself the signal that models beyond the top few were trimmed.
+        <Meter
+          key={model.model}
+          size="sm"
+          value={total > 0 ? (model.tokens / total) * 100 : 0}
+          valueLabel={formatTokens(model.tokens)}
+        >
+          <Label className="truncate text-muted text-xs">
+            {displayNames[model.model] ?? model.model}
+          </Label>
+          <Meter.Output className="whitespace-nowrap text-xs" />
+          <Meter.Track>
+            <Meter.Fill />
+          </Meter.Track>
+        </Meter>
+      ))}
+    </div>
   );
 }
