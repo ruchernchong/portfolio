@@ -1,3 +1,9 @@
+## [1.33.2](https://github.com/ruchernchong/blog/compare/v1.33.1...v1.33.2) (2026-08-10)
+
+### Performance Improvements
+
+* cache github followers and per-year commit counts ([fb1efcb](https://github.com/ruchernchong/blog/commit/fb1efcba454dfaae236e0a7cd5e382cd8b018767))
+
 ## [1.33.1](https://github.com/ruchernchong/blog/compare/v1.33.0...v1.33.1) (2026-08-03)
 
 ### Bug Fixes
