@@ -65,7 +65,7 @@
     "embla-carousel-react": "8.6.0",
     "graphql": "^16.8.1",
     "marked": "18.0.4",
-    "mermaid": "11.15.0",
+    "mermaid": "11.16.1",
     "motion": "^12.23.26",
     "next": "catalog:",
     "next-mdx-remote": "^6.0.0",
