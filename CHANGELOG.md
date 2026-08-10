@@ -1,3 +1,15 @@
+## [1.34.0](https://github.com/ruchernchong/blog/compare/v1.33.2...v1.34.0) (2026-08-10)
+
+### Features
+
+* add day breakdown popover to the usage heatmap ([4f70e2c](https://github.com/ruchernchong/blog/commit/4f70e2cb46808700af0036825462c6f512810ffe))
+* open the usage heatmap on the most recent week ([d222143](https://github.com/ruchernchong/blog/commit/d222143582c785ee1324956ef1fa32cfc4928de0))
+
+### Bug Fixes
+
+* keep usage heatmap cells pressable on mobile ([5626bd5](https://github.com/ruchernchong/blog/commit/5626bd54dca30d79d5f9c057b8a27f747516d3da))
+* stop breakdown pagination overflowing the page on mobile ([f2bfb5b](https://github.com/ruchernchong/blog/commit/f2bfb5b0369e3bb536a940a8f6b7c5ba56b40ae7))
+
 ## [1.33.2](https://github.com/ruchernchong/blog/compare/v1.33.1...v1.33.2) (2026-08-10)
 
 ### Performance Improvements
