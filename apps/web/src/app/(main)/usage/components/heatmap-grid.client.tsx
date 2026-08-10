@@ -41,6 +41,10 @@ interface HeatmapGridClientProps {
  * A caption under the grid tracks the hovered/focused day and spells out the
  * press affordance — a heatmap otherwise reads as decoration, and the popover
  * is the only way to reach a day's breakdown.
+ *
+ * The grid keeps its cell size and scrolls horizontally when the container is
+ * too narrow for a full year, rather than shrinking cells to fit. A press
+ * target is the whole point here, so width is the thing that gives.
  */
 export function HeatmapGridClient({
   layout,
@@ -51,49 +55,66 @@ export function HeatmapGridClient({
   const [preview, setPreview] = useState<DayContribution | null>(null);
 
   // One stretchable column per week so the grid fills its container's full
-  // width; cells stay square via `aspect-square`.
-  const columns = `repeat(${weeks.length}, minmax(0, 1fr))`;
+  // width; cells stay square via `aspect-square`. The floor matters more than
+  // the ceiling: with 53 columns and a 4px gap, `minmax(0, …)` leaves the gaps
+  // eating three quarters of a phone's width and collapses cells to ~1px, far
+  // too small to press. Below the floor the grid scrolls instead of shrinking.
+  // The floor itself comes from `--heatmap-cell` so it can differ by breakpoint.
+  const columns = `repeat(${weeks.length}, minmax(var(--heatmap-cell), 1fr))`;
 
   return (
     <div className="flex w-full flex-col gap-2">
-      {/* Month labels: one slot per week column, label at its start column. */}
-      <div
-        className="grid gap-1 text-muted text-xs"
-        style={{ gridTemplateColumns: columns }}
-      >
-        {weeks.map((_, weekIndex) => {
-          const month = monthLabels.find((m) => m.weekIndex === weekIndex);
-          return (
-            <div
-              className="h-4"
-              // biome-ignore lint/suspicious/noArrayIndexKey: week columns are positional
-              key={weekIndex}
-            >
-              {month?.label}
-            </div>
-          );
-        })}
+      {/* Both rows share `columns`, so they stay column-aligned inside the one
+          scroller. The caption sits outside it and stays put while you scroll.
+          The padding is clearance, not spacing: `overflow-x` resolves the
+          vertical axis to `auto` as well, which would otherwise crop the hover
+          scale and focus ring on the edge cells.
+
+          A thumb needs more than a cursor does, so phones get the larger floor
+          and scroll. From `sm` up the floor sits under the width a desktop card
+          settles at, leaving those layouts filling their container as before. */}
+      <div className="flex flex-col gap-2 overflow-x-auto p-1.5 [--heatmap-cell:16px] sm:[--heatmap-cell:10px]">
+        {/* Month labels: one slot per week column, label at its start column. */}
+        <div
+          className="grid gap-1 text-muted text-xs"
+          style={{ gridTemplateColumns: columns }}
+        >
+          {weeks.map((_, weekIndex) => {
+            const month = monthLabels.find((m) => m.weekIndex === weekIndex);
+            return (
+              <div
+                className="h-4"
+                // biome-ignore lint/suspicious/noArrayIndexKey: week columns are positional
+                key={weekIndex}
+              >
+                {month?.label}
+              </div>
+            );
+          })}
+        </div>
+
+        <div
+          className="grid grid-flow-col grid-rows-7 gap-1"
+          style={{ gridTemplateColumns: columns }}
+        >
+          {weeks.map((week, weekIndex) =>
+            week.map((cell, dayIndex) => (
+              <Cell
+                cell={cell}
+                modelDisplayNames={modelDisplayNames}
+                onPreview={setPreview}
+                today={today}
+                // biome-ignore lint/suspicious/noArrayIndexKey: grid position is the identity
+                key={`${weekIndex}-${dayIndex}`}
+              />
+            )),
+          )}
+        </div>
       </div>
 
-      <div
-        className="grid grid-flow-col grid-rows-7 gap-1"
-        style={{ gridTemplateColumns: columns }}
-      >
-        {weeks.map((week, weekIndex) =>
-          week.map((cell, dayIndex) => (
-            <Cell
-              cell={cell}
-              modelDisplayNames={modelDisplayNames}
-              onPreview={setPreview}
-              today={today}
-              // biome-ignore lint/suspicious/noArrayIndexKey: grid position is the identity
-              key={`${weekIndex}-${dayIndex}`}
-            />
-          )),
-        )}
-      </div>
-
-      <p className="h-5 text-sm">
+      {/* Reserved height, so swapping days never shifts the layout. Narrow
+          screens need two lines for the same caption, hence the breakpoint. */}
+      <p className="min-h-10 text-sm sm:min-h-5">
         {preview ? (
           <>
             <span className="font-medium">
