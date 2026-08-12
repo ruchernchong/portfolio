@@ -30,6 +30,7 @@ describe("providerLogoUrl", () => {
     expect(providerLogoUrl("anthropic")).toBe(
       "https://models.dev/logos/anthropic.svg",
     );
+    expect(providerLogoUrl("xai")).toBe("https://models.dev/logos/xai.svg");
   });
 });
 

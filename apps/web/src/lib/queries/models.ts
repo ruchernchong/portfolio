@@ -46,6 +46,7 @@ export const SOURCE_LABELS: Record<RegistrySource, string> = {
 
 const PROVIDER_ALIASES: Record<string, string> = {
   ollama: "ollama-cloud",
+  "x-ai": "xai",
 };
 
 const FALLBACK_PROVIDER_NAMES: Record<string, string> = {
@@ -58,6 +59,8 @@ const FALLBACK_PROVIDER_NAMES: Record<string, string> = {
   opencode: "OpenCode Zen",
   "opencode-go": "OpenCode Go",
   openai: "OpenAI",
+  xai: "xAI",
+  "x-ai": "xAI",
 };
 
 interface ModelsProviderMetadata {
