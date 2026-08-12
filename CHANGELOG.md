@@ -1,3 +1,9 @@
+## [1.35.0](https://github.com/ruchernchong/blog/compare/v1.34.0...v1.35.0) (2026-08-12)
+
+### Features
+
+* add Grok 4.6 and xAI provider support ([06e8cd3](https://github.com/ruchernchong/blog/commit/06e8cd3393f9aab60658ad3699fffd77cca7bbf5))
+
 ## [1.34.0](https://github.com/ruchernchong/blog/compare/v1.33.2...v1.34.0) (2026-08-10)
 
 ### Features
