@@ -8,11 +8,12 @@ import {
 
 /**
  * Fixture mirroring the models.dev payload shape. `gpt-5.5` is priced under both
- * `openai` and `fireworks-ai` to prove provider selection. The GPT-5.6 entries
- * deliberately carry incorrect rates so the tests prove the seeded overrides
- * take precedence. `gpt-5.5-fast` and `claude-sonnet-5` are absent from
- * models.dev, so they resolve only via the seeded override entries — exactly
- * as they do in production once merged from `SEED_OVERRIDES`.
+ * `openai` and `fireworks-ai` to prove provider selection. The GPT-5.6 and
+ * Grok 4.6 entries deliberately carry incorrect rates so the tests prove the
+ * seeded overrides take precedence. `gpt-5.5-fast`, `claude-sonnet-5`, and
+ * `grok-4.6-fast` are absent from models.dev, so they resolve only via the
+ * seeded override entries — exactly as they do in production once merged from
+ * `SEED_OVERRIDES`.
  */
 const api: ModelsDevApi = {
   anthropic: {
@@ -36,6 +37,11 @@ const api: ModelsDevApi = {
     models: {
       "gpt-5.5": { cost: { input: 99, output: 99 } },
       "gpt-5.6-sol": { cost: { input: 98, output: 98 } },
+    },
+  },
+  xai: {
+    models: {
+      "grok-4.6": { cost: { input: 91, output: 91 } },
     },
   },
 };
@@ -199,6 +205,52 @@ describe("buildPricingFromRegistry", () => {
       { provider: "openai" },
     );
     expect(cost).toBeCloseTo(88.75, 6);
+  });
+
+  it("should pin exact Grok 4.6 rates ahead of models.dev", () => {
+    expect(pricing.priceFor("grok-4.6", { provider: "xai" })).toEqual({
+      input: 2,
+      output: 6,
+      cacheRead: 0.5,
+      cacheWrite: 0,
+    });
+    expect(pricing.priceFor("grok-4.6-fast", { provider: "xai" })).toEqual({
+      input: 4,
+      output: 12,
+      cacheRead: 1,
+      cacheWrite: 0,
+    });
+  });
+
+  it("should scope Grok 4.6 overrides to the xAI provider", () => {
+    expect(pricing.priceFor("grok-4.6", { provider: "openai" })).toBeNull();
+    expect(
+      pricing.priceFor("grok-4.6-fast", { provider: "cursor" }),
+    ).toBeNull();
+  });
+
+  it("should price the Grok 4.6 dash slug identically to the dotted id", () => {
+    expect(pricing.priceFor("grok-4-6", { provider: "xai" })).toEqual(
+      pricing.priceFor("grok-4.6", { provider: "xai" }),
+    );
+  });
+
+  it("should price every Grok 4.6 token bucket at its pinned rate", () => {
+    const cost = pricing.costOf(
+      {
+        input: 1_000_000,
+        output: 1_000_000,
+        cacheRead: 1_000_000,
+        cacheWrite: 0,
+        reasoning: 1_000_000,
+      },
+      "grok-4.6",
+      { provider: "xai" },
+    );
+
+    // $2 input + $6 output + $0.50 cache read + $6 reasoning (billed as output)
+    // = $14.50.
+    expect(cost).toBeCloseTo(14.5, 6);
   });
 
   it("should price every GPT-5.6 token bucket at its pinned rate", () => {

@@ -51,9 +51,9 @@ export type ModelSource =
  * layer only where the DB has no curated override for the key, so local + prod
  * self-seed on first ingest and each row becomes MCP-editable data afterward.
  *
- * These are all OpenAI Codex-internal slugs (or `claude-sonnet-5` before
- * models.dev listed it) that appear in no public pricing source, so they can
- * only ever be overrides. Rates are USD per 1,000,000 tokens.
+ * These are slugs that appear in no public pricing source, or newly-released
+ * frontier models whose live rates we pin until the sources settle (GPT-5.6,
+ * Grok 4.6). Rates are USD per 1,000,000 tokens.
  */
 export const SEED_OVERRIDES: ModelEntry[] = [
   {
@@ -104,6 +104,22 @@ export const SEED_OVERRIDES: ModelEntry[] = [
     source: "override",
     isOverride: true,
     aliasTarget: "gpt-5-codex",
+  },
+  {
+    provider: "xai",
+    id: "grok-4.6",
+    source: "override",
+    isOverride: true,
+    displayName: "Grok 4.6",
+    rate: { input: 2, output: 6, cacheRead: 0.5, cacheWrite: 0 },
+  },
+  {
+    provider: "xai",
+    id: "grok-4.6-fast",
+    source: "override",
+    isOverride: true,
+    displayName: "Grok 4.6 Fast",
+    rate: { input: 4, output: 12, cacheRead: 1, cacheWrite: 0 },
   },
 ];
 
