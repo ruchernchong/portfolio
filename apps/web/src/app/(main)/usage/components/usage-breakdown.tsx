@@ -6,8 +6,6 @@ import {
   Chip,
   Dropdown,
   Label,
-  ListBox,
-  Pagination,
   SearchField,
   Typography,
 } from "@heroui/react";
@@ -17,7 +15,6 @@ import {
   type DataGridColumn,
   type DataGridSelection,
   type DataGridSortDescriptor,
-  InlineSelect,
   NumberValue,
   Segment,
 } from "@heroui-pro/react";
@@ -57,7 +54,10 @@ const HIDEABLE_COLUMNS = [
   { id: "messages", label: "Messages" },
 ];
 
-const ROWS_PER_PAGE_OPTIONS = [10, 25, 50];
+/** Fixed metrics required by DataGrid `virtualized` (RAC TableLayout). */
+const GRID_ROW_HEIGHT = 52;
+const GRID_HEADING_HEIGHT = 36;
+const GRID_SCROLL_CLASS = "max-h-[400px] overflow-auto";
 
 const DEFAULT_SORT_DESCRIPTOR: DataGridSortDescriptor = {
   column: "tokens",
@@ -489,125 +489,17 @@ function BreakdownToolbar({
   );
 }
 
-/** Collapse long page lists to "1 … n-1 n n+1 … last", as in the DataGrid docs. */
-function paginationPages(
-  pageCount: number,
-  currentPage: number,
-): (number | "ellipsis-start" | "ellipsis-end")[] {
-  if (pageCount <= 7) {
-    return Array.from({ length: pageCount }, (_, index) => index + 1);
-  }
-
-  const pages: (number | "ellipsis-start" | "ellipsis-end")[] = [1];
-  if (currentPage > 3) {
-    pages.push("ellipsis-start");
-  }
-  const start = Math.max(2, currentPage - 1);
-  const end = Math.min(pageCount - 1, currentPage + 1);
-  for (let pageNumber = start; pageNumber <= end; pageNumber++) {
-    pages.push(pageNumber);
-  }
-  if (currentPage < pageCount - 2) {
-    pages.push("ellipsis-end");
-  }
-  pages.push(pageCount);
-
-  return pages;
-}
-
-function BreakdownPagination({
-  currentPage,
-  onPageChange,
-  onRowsPerPageChange,
-  pageCount,
-  rowsPerPage,
-}: {
-  currentPage: number;
-  onPageChange: (page: number) => void;
-  onRowsPerPageChange: (rows: number) => void;
-  pageCount: number;
-  rowsPerPage: number;
-}) {
+function getTableScrollContainer(root: HTMLElement | null) {
   return (
-    // Stacks rather than overflows: the pager plus the rows-per-page select
-    // need ~410px, and `whitespace-nowrap` on a single row pushed that width
-    // onto the page itself, scrolling every section sideways on a phone.
-    // Stacking beats wrapping here because the pager grows to fill the row,
-    // which would wrap the select onto its own line at every width.
-    <div className="flex flex-col gap-2 whitespace-nowrap text-xs sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-      <Pagination size="sm">
-        <Pagination.Content>
-          <Pagination.Item>
-            <Pagination.Previous
-              isDisabled={currentPage === 1}
-              onPress={() => onPageChange(currentPage - 1)}
-            >
-              <Pagination.PreviousIcon />
-            </Pagination.Previous>
-          </Pagination.Item>
-          {paginationPages(pageCount, currentPage).map((pageNumber) =>
-            typeof pageNumber === "string" ? (
-              <Pagination.Item key={pageNumber}>
-                <Pagination.Ellipsis />
-              </Pagination.Item>
-            ) : (
-              <Pagination.Item key={pageNumber}>
-                <Pagination.Link
-                  isActive={pageNumber === currentPage}
-                  onPress={() => onPageChange(pageNumber)}
-                >
-                  {pageNumber}
-                </Pagination.Link>
-              </Pagination.Item>
-            ),
-          )}
-          <Pagination.Item>
-            <Pagination.Next
-              isDisabled={currentPage === pageCount}
-              onPress={() => onPageChange(currentPage + 1)}
-            >
-              <Pagination.NextIcon />
-            </Pagination.Next>
-          </Pagination.Item>
-        </Pagination.Content>
-      </Pagination>
-      <InlineSelect
-        aria-label="Rows per page"
-        onChange={(value) => {
-          if (value) {
-            onRowsPerPageChange(Number(value));
-          }
-        }}
-        value={String(rowsPerPage)}
-      >
-        <InlineSelect.Trigger>
-          <span className="text-muted">Rows per page</span>
-          <InlineSelect.Value />
-          <InlineSelect.Indicator />
-        </InlineSelect.Trigger>
-        <InlineSelect.Popover className="w-20">
-          <ListBox>
-            {ROWS_PER_PAGE_OPTIONS.map((option) => (
-              <ListBox.Item
-                id={String(option)}
-                key={option}
-                textValue={String(option)}
-              >
-                {option}
-                <ListBox.ItemIndicator />
-              </ListBox.Item>
-            ))}
-          </ListBox>
-        </InlineSelect.Popover>
-      </InlineSelect>
-    </div>
+    root?.querySelector<HTMLElement>('[data-slot="table-scroll-container"]') ??
+    null
   );
 }
 
 /**
  * A single breakdown card whose dataset is toggled with a segmented control.
- * Rows can be searched, filtered by provider, sorted, and paginated; column
- * visibility is user-toggleable. This component owns all of that state.
+ * Rows can be searched, filtered by provider, and sorted; column visibility is
+ * user-toggleable. This component owns all of that state.
  */
 export function UsageBreakdown({
   className,
@@ -626,17 +518,9 @@ export function UsageBreakdown({
   const [sortDescriptor, setSortDescriptor] = useState<DataGridSortDescriptor>(
     DEFAULT_SORT_DESCRIPTOR,
   );
-  const [page, setPage] = useState(1);
-  const [rowsPerPage, setRowsPerPage] = useState(ROWS_PER_PAGE_OPTIONS[0]);
   const gridRef = useRef<HTMLDivElement>(null);
-  const [gridMinHeight, setGridMinHeight] = useState<number>();
 
   const active = views.find((view) => view.id === selectedKey) ?? views[0];
-
-  const handleFreeFilterChange = (value: string) => {
-    setFreeFilter(value);
-    setPage(1);
-  };
 
   const handleViewChange = (key: string) => {
     setSelectedKey(key);
@@ -644,41 +528,12 @@ export function UsageBreakdown({
     setProviderFilter("all");
     setFreeFilter("all");
     setSortDescriptor(DEFAULT_SORT_DESCRIPTOR);
-    setPage(1);
-    setGridMinHeight(undefined);
-  };
-
-  const handleVisibleColumnsChange = (keys: DataGridSelection) => {
-    setVisibleColumns(keys);
-    setGridMinHeight(undefined);
-  };
-
-  const handleSearchChange = (value: string) => {
-    setSearch(value);
-    setPage(1);
-  };
-
-  const handleProviderFilterChange = (value: string) => {
-    setProviderFilter(value);
-    setPage(1);
-  };
-
-  const handleSortChange = (descriptor: DataGridSortDescriptor) => {
-    setSortDescriptor(descriptor);
-    setPage(1);
-  };
-
-  const handleRowsPerPageChange = (value: number) => {
-    setRowsPerPage(value);
-    setPage(1);
-    setGridMinHeight(undefined);
   };
 
   const handleClearFilters = () => {
     setSearch("");
     setProviderFilter("all");
     setFreeFilter("all");
-    setPage(1);
   };
 
   const providerOptions = useMemo<ProviderOption[]>(() => {
@@ -769,24 +624,10 @@ export function UsageBreakdown({
     ],
   );
 
-  const pageCount = Math.max(1, Math.ceil(sortedRows.length / rowsPerPage));
-  const currentPage = Math.min(page, pageCount);
-
-  const pagedRows = useMemo(
-    () =>
-      sortedRows.slice(
-        (currentPage - 1) * rowsPerPage,
-        currentPage * rowsPerPage,
-      ),
-    [currentPage, rowsPerPage, sortedRows],
-  );
-
-  // Lock the height of a full page so shorter last pages don't shift layout.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reset scroll when the visible row set changes; the array is the trigger, not a value we read
   useLayoutEffect(() => {
-    if (pagedRows.length === rowsPerPage && gridRef.current) {
-      setGridMinHeight(gridRef.current.offsetHeight);
-    }
-  }, [pagedRows.length, rowsPerPage]);
+    getTableScrollContainer(gridRef.current)?.scrollTo(0, 0);
+  }, [sortedRows]);
 
   const columns = useMemo(
     () =>
@@ -839,10 +680,10 @@ export function UsageBreakdown({
       <Card.Content className="flex flex-col gap-4">
         <BreakdownToolbar
           columnOptions={columnOptions}
-          onFreeFilterChange={handleFreeFilterChange}
-          onProviderFilterChange={handleProviderFilterChange}
-          onSearchChange={handleSearchChange}
-          onVisibleColumnsChange={handleVisibleColumnsChange}
+          onFreeFilterChange={setFreeFilter}
+          onProviderFilterChange={setProviderFilter}
+          onSearchChange={setSearch}
+          onVisibleColumnsChange={setVisibleColumns}
           freeFilter={freeFilter}
           providerFilter={providerFilter}
           providerOptions={providerOptions}
@@ -855,21 +696,21 @@ export function UsageBreakdown({
               <FilterChip
                 clearLabel="Clear search"
                 label={`Search: ${search}`}
-                onClear={() => handleSearchChange("")}
+                onClear={() => setSearch("")}
               />
             )}
             {freeFilter !== "all" && (
               <FilterChip
                 clearLabel="Clear free filter"
                 label="Free"
-                onClear={() => handleFreeFilterChange("all")}
+                onClear={() => setFreeFilter("all")}
               />
             )}
             {providerFilter !== "all" && (
               <FilterChip
                 clearLabel="Clear provider filter"
                 label={`Provider: ${providerDisplayNames[providerFilter] ?? providerFilter}`}
-                onClear={() => handleProviderFilterChange("all")}
+                onClear={() => setProviderFilter("all")}
               />
             )}
             <Button onPress={handleClearFilters} size="sm" variant="ghost">
@@ -877,34 +718,29 @@ export function UsageBreakdown({
             </Button>
           </div>
         )}
-        <div ref={gridRef} style={{ minHeight: gridMinHeight }}>
+        <div ref={gridRef}>
           <DataGrid
             allowsColumnResize
+            virtualized
             aria-label="Usage breakdown"
-            className="[&_.table__cell]:py-1.5 [&_.table__cell]:text-xs [&_.table__column]:py-1.5 [&_.table__column]:text-[11px]"
+            className="[&_.table__cell]:overflow-hidden [&_.table__cell]:whitespace-nowrap [&_.table__cell]:py-1.5 [&_.table__cell]:text-xs [&_.table__column]:py-1.5 [&_.table__column]:text-[11px]"
             columns={columns}
             contentClassName="min-w-[760px] md:min-w-[1000px]"
-            data={pagedRows}
+            data={sortedRows}
             getRowId={(row) => row.key}
-            onSortChange={handleSortChange}
+            headingHeight={GRID_HEADING_HEIGHT}
+            onSortChange={setSortDescriptor}
             renderEmptyState={() => (
               <div className="py-8 text-center text-muted text-sm">
                 No results match your filters.
               </div>
             )}
+            rowHeight={GRID_ROW_HEIGHT}
+            scrollContainerClassName={GRID_SCROLL_CLASS}
             sortDescriptor={sortDescriptor}
             variant="primary"
           />
         </div>
-        {sortedRows.length > ROWS_PER_PAGE_OPTIONS[0] && (
-          <BreakdownPagination
-            currentPage={currentPage}
-            onPageChange={setPage}
-            onRowsPerPageChange={handleRowsPerPageChange}
-            pageCount={pageCount}
-            rowsPerPage={rowsPerPage}
-          />
-        )}
         <Typography.Paragraph color="muted" size="xs">
           Token usage from Anthropic excludes Claude Design at this moment.
         </Typography.Paragraph>
