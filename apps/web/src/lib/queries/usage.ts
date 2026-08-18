@@ -1,14 +1,15 @@
 import type { Pricing } from "@workspace/usage/pricing";
-import type {
-  AgentDayBreakdown,
-  Cost,
-  DayContribution,
-  ModelDayBreakdown,
-  TokenBreakdown,
-  UsageBreakdownRow,
-  UsageProfile,
-  UsageSummary,
-  YearSummary,
+import {
+  type AgentDayBreakdown,
+  type Cost,
+  type DayContribution,
+  foldEffortSummary,
+  type ModelDayBreakdown,
+  type TokenBreakdown,
+  type UsageBreakdownRow,
+  type UsageProfile,
+  type UsageSummary,
+  type YearSummary,
 } from "@workspace/usage/types";
 import { addDays, differenceInCalendarDays, format, parseISO } from "date-fns";
 import { and, asc, eq, isNull, sql } from "drizzle-orm";
@@ -212,7 +213,8 @@ export async function repriceUnpricedTokenUsage(
 }
 
 /**
- * Build the public `UsageProfile` from the daily `token_usage` aggregates.
+ * Build the public `UsageProfile` from the daily `token_usage` aggregates
+ * (and optional `token_effort_usage` session-level effort rows).
  *
  * Pure read (no mutations). All cost arithmetic treats a `null` `costUsd` as
  * N.A. — it is excluded from sums rather than counted as $0, and a group whose
@@ -224,14 +226,18 @@ export async function getUsageProfile(): Promise<UsageProfile> {
   cacheLife("days");
   cacheTag("usage");
 
-  const rows = await db
-    .select()
-    .from(tokenUsage)
-    .orderBy(
-      asc(tokenUsage.date),
-      asc(tokenUsage.agent),
-      asc(tokenUsage.model),
-    );
+  // neon-http: one HTTP round-trip via Neon's batch API (Promise.all would be two).
+  const [rows, effortRows] = await db.batch([
+    db
+      .select()
+      .from(tokenUsage)
+      .orderBy(
+        asc(tokenUsage.date),
+        asc(tokenUsage.agent),
+        asc(tokenUsage.model),
+      ),
+    db.select().from(tokenEffortUsage),
+  ]);
 
   if (rows.length === 0) {
     return emptyProfile();
@@ -287,6 +293,12 @@ export async function getUsageProfile(): Promise<UsageProfile> {
   const years = buildYears(contributions);
   const summary = buildSummary(contributions, byAgent, byProvider, byModel);
 
+  for (const row of effortRows) {
+    if (row.updatedAt > lastUpdated) {
+      lastUpdated = row.updatedAt;
+    }
+  }
+
   return {
     summary,
     years,
@@ -295,6 +307,7 @@ export async function getUsageProfile(): Promise<UsageProfile> {
     byProvider,
     byModel,
     tokenMix,
+    effort: foldEffortSummary(effortRows),
     lastUpdated: lastUpdated.toISOString(),
   };
 }
@@ -636,6 +649,7 @@ function emptyProfile(): UsageProfile {
     byProvider: [],
     byModel: [],
     tokenMix: emptyTokenBreakdown(),
+    effort: null,
     lastUpdated: null,
   };
 }

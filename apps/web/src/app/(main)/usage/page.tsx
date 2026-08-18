@@ -8,6 +8,7 @@ import {
 } from "@/lib/queries/models";
 import { getUsageProfile } from "@/lib/queries/usage";
 import { UsageBreakdown } from "./components/usage-breakdown";
+import { UsageEffortLevels } from "./components/usage-effort-levels";
 import { UsageHeatmap } from "./components/usage-heatmap";
 import { UsageLastUpdated } from "./components/usage-last-updated";
 import { UsageStats } from "./components/usage-stats";
@@ -16,7 +17,7 @@ import { UsageTrend } from "./components/usage-trend";
 
 const title = "Usage";
 const description =
-  "Tokens and cost across my AI coding agents over time. Aggregates only.";
+  "Tokens, cost, and reasoning effort across my AI coding agents over time. Aggregates only.";
 const canonical = "/usage";
 
 export const metadata: Metadata = {
@@ -68,6 +69,8 @@ export default async function UsagePage() {
         <UsageTokenMix tokenMix={profile.tokenMix} />
         <UsageTrend contributions={profile.contributions} />
       </div>
+
+      {profile.effort ? <UsageEffortLevels effort={profile.effort} /> : null}
 
       <UsageBreakdown
         providerDisplayNames={providerDisplayNames}
