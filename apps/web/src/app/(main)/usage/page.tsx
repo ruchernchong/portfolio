@@ -70,9 +70,7 @@ export default async function UsagePage() {
         <UsageTrend contributions={profile.contributions} />
       </div>
 
-      {profile.effort && profile.effort.classifiedSessionCount > 0 ? (
-        <UsageEffortLevels effort={profile.effort} />
-      ) : null}
+      {profile.effort ? <UsageEffortLevels effort={profile.effort} /> : null}
 
       <UsageBreakdown
         providerDisplayNames={providerDisplayNames}

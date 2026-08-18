@@ -9,19 +9,11 @@ interface UsageEffortLevelsProps {
 
 /** Cycle through HeroUI chart tokens for open-ended effort level lists. */
 const CHART_COLORS = [
-  "var(--chart-1)",
-  "var(--chart-2)",
-  "var(--chart-3)",
-  "var(--chart-4)",
-  "var(--chart-5)",
-] as const;
-
-const CHART_COLOR_CLASSES = [
-  "bg-[var(--chart-1)]",
-  "bg-[var(--chart-2)]",
-  "bg-[var(--chart-3)]",
-  "bg-[var(--chart-4)]",
-  "bg-[var(--chart-5)]",
+  { color: "var(--chart-1)", colorClass: "bg-[var(--chart-1)]" },
+  { color: "var(--chart-2)", colorClass: "bg-[var(--chart-2)]" },
+  { color: "var(--chart-3)", colorClass: "bg-[var(--chart-3)]" },
+  { color: "var(--chart-4)", colorClass: "bg-[var(--chart-4)]" },
+  { color: "var(--chart-5)", colorClass: "bg-[var(--chart-5)]" },
 ] as const;
 
 /**
@@ -53,9 +45,8 @@ export function UsageEffortLevels({
               classifiedSessionCount > 0
                 ? (row.sessionCount / classifiedSessionCount) * 100
                 : 0;
-            const colorClass =
-              CHART_COLOR_CLASSES[index % CHART_COLOR_CLASSES.length];
-            const color = CHART_COLORS[index % CHART_COLORS.length];
+            const { color, colorClass } =
+              CHART_COLORS[index % CHART_COLORS.length];
 
             return (
               <li className="flex flex-col gap-2" key={row.level}>
