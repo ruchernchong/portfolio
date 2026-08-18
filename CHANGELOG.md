@@ -1,3 +1,27 @@
+## [1.35.0](https://github.com/ruchernchong/blog/compare/v1.34.0...v1.35.0) (2026-08-12)
+
+### Features
+
+* add Grok 4.6 and xAI provider support ([06e8cd3](https://github.com/ruchernchong/blog/commit/06e8cd3393f9aab60658ad3699fffd77cca7bbf5))
+
+## [1.34.0](https://github.com/ruchernchong/blog/compare/v1.33.2...v1.34.0) (2026-08-10)
+
+### Features
+
+* add day breakdown popover to the usage heatmap ([4f70e2c](https://github.com/ruchernchong/blog/commit/4f70e2cb46808700af0036825462c6f512810ffe))
+* open the usage heatmap on the most recent week ([d222143](https://github.com/ruchernchong/blog/commit/d222143582c785ee1324956ef1fa32cfc4928de0))
+
+### Bug Fixes
+
+* keep usage heatmap cells pressable on mobile ([5626bd5](https://github.com/ruchernchong/blog/commit/5626bd54dca30d79d5f9c057b8a27f747516d3da))
+* stop breakdown pagination overflowing the page on mobile ([f2bfb5b](https://github.com/ruchernchong/blog/commit/f2bfb5b0369e3bb536a940a8f6b7c5ba56b40ae7))
+
+## [1.33.2](https://github.com/ruchernchong/blog/compare/v1.33.1...v1.33.2) (2026-08-10)
+
+### Performance Improvements
+
+* cache github followers and per-year commit counts ([fb1efcb](https://github.com/ruchernchong/blog/commit/fb1efcba454dfaae236e0a7cd5e382cd8b018767))
+
 ## [1.33.1](https://github.com/ruchernchong/blog/compare/v1.33.0...v1.33.1) (2026-08-03)
 
 ### Bug Fixes

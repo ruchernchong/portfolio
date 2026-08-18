@@ -60,7 +60,10 @@ export default async function UsagePage() {
         modelDisplayNames={modelDisplayNames}
       />
 
-      <UsageHeatmap contributions={profile.contributions} />
+      <UsageHeatmap
+        contributions={profile.contributions}
+        modelDisplayNames={modelDisplayNames}
+      />
 
       <div className="grid gap-4 lg:grid-cols-[5fr_7fr]">
         <UsageTokenMix tokenMix={profile.tokenMix} />

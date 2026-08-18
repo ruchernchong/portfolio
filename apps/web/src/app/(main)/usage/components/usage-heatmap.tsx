@@ -7,6 +7,8 @@ import { type HeatmapYear, UsageHeatmapClient } from "./usage-heatmap.client";
 interface UsageHeatmapProps {
   className?: string;
   contributions: DayContribution[];
+  /** Registry slug → display name, for the per-day model rows. */
+  modelDisplayNames: Record<string, string>;
 }
 
 function emptyDay(date: string): DayContribution {
@@ -22,6 +24,7 @@ function emptyDay(date: string): DayContribution {
       reasoning: 0,
     },
     agents: [],
+    models: [],
   };
 }
 
@@ -49,7 +52,11 @@ function fullYear(year: string, days: DayContribution[]): DayContribution[] {
  * and each year gets its own pure, serializable `buildHeatmapLayout` result, so
  * the client only switches between ready-made grids. Years are newest-first.
  */
-export function UsageHeatmap({ className, contributions }: UsageHeatmapProps) {
+export function UsageHeatmap({
+  className,
+  contributions,
+  modelDisplayNames,
+}: UsageHeatmapProps) {
   const byYear = new Map<string, DayContribution[]>();
   for (const day of contributions) {
     const year = day.date.slice(0, 4);
@@ -78,7 +85,10 @@ export function UsageHeatmap({ className, contributions }: UsageHeatmapProps) {
         {years.length === 0 ? (
           <p className="text-muted text-sm">No activity yet.</p>
         ) : (
-          <UsageHeatmapClient years={years} />
+          <UsageHeatmapClient
+            modelDisplayNames={modelDisplayNames}
+            years={years}
+          />
         )}
       </Card.Content>
     </Card>

@@ -49,6 +49,8 @@ describe("canonicalSlug", () => {
     expect(canonicalSlug("gpt-5.6-sol")).not.toBe(
       canonicalSlug("gpt-5.6-sol-fast"),
     );
+    expect(canonicalSlug("grok-4.6")).toBe(canonicalSlug("grok-4-6"));
+    expect(canonicalSlug("grok-4.6")).not.toBe(canonicalSlug("grok-4.6-fast"));
     expect(canonicalSlug("claude-opus-4-8")).not.toBe(
       canonicalSlug("claude-opus-5"),
     );

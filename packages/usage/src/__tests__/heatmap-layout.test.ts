@@ -23,6 +23,7 @@ function makeDays(start: string, count: number): DayContribution[] {
       intensity: 0,
       tokenBreakdown: emptyBreakdown,
       agents: [],
+      models: [],
     } satisfies DayContribution;
   });
 }

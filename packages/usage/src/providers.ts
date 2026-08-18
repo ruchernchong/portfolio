@@ -5,8 +5,9 @@ import type { Provider } from "./types";
  * tokens. Used as a fallback for agents that do NOT record a provider per event.
  *
  * Multi-provider agents (e.g. OpenCode, which routes to openai, fireworks-ai,
- * ollama, opencode, opencode-go) instead carry the provider on each usage event,
- * so they are not listed here — see {@link resolveProvider}.
+ * ollama, opencode, opencode-go; Cursor, which stamps `xai` for grok-* models)
+ * instead carry the provider on each usage event, so they are not listed here —
+ * see {@link resolveProvider}.
  *
  * Consumed by the ingest fold (to stamp `provider` on each row) and pricing (to
  * resolve a model under its provider on models.dev). Add a single-provider

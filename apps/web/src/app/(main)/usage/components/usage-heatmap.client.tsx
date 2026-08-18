@@ -14,6 +14,8 @@ export interface HeatmapYear {
 }
 
 interface UsageHeatmapClientProps {
+  /** Registry slug → display name, for the per-day model rows. */
+  modelDisplayNames: Record<string, string>;
   /** Newest year first; each layout is precomputed server-side. */
   years: HeatmapYear[];
 }
@@ -40,7 +42,10 @@ function getTodayDateKey(date: Date) {
  * already-computed grid. The year switcher only appears when there is more than
  * one year of data.
  */
-export function UsageHeatmapClient({ years }: UsageHeatmapClientProps) {
+export function UsageHeatmapClient({
+  modelDisplayNames,
+  years,
+}: UsageHeatmapClientProps) {
   const [selectedYear, setSelectedYear] = useState(years[0].year);
   const [today, setToday] = useState<string | null>(null);
   const active = years.find((y) => y.year === selectedYear) ?? years[0];
@@ -66,7 +71,11 @@ export function UsageHeatmapClient({ years }: UsageHeatmapClientProps) {
         </div>
       )}
 
-      <HeatmapGridClient layout={active.layout} today={today} />
+      <HeatmapGridClient
+        layout={active.layout}
+        modelDisplayNames={modelDisplayNames}
+        today={today}
+      />
 
       <div className="flex items-center gap-2 text-muted text-xs">
         <span>Less</span>
