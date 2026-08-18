@@ -226,7 +226,8 @@ export async function getUsageProfile(): Promise<UsageProfile> {
   cacheLife("days");
   cacheTag("usage");
 
-  const [rows, effortRows] = await Promise.all([
+  // neon-http: one HTTP round-trip via Neon's batch API (Promise.all would be two).
+  const [rows, effortRows] = await db.batch([
     db
       .select()
       .from(tokenUsage)
