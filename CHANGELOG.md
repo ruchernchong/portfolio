@@ -1,3 +1,9 @@
+## [1.36.0](https://github.com/ruchernchong/blog/compare/v1.35.0...v1.36.0) (2026-08-18)
+
+### Features
+
+* virtualise the usage breakdown table ([4b13bc2](https://github.com/ruchernchong/blog/commit/4b13bc23e9d04d31d8607c0bf96246cf8b767a93))
+
 ## [1.35.0](https://github.com/ruchernchong/blog/compare/v1.34.0...v1.35.0) (2026-08-12)
 
 ### Features
