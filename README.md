@@ -35,11 +35,12 @@ pnpm build           # Build for production
 - **Monorepo**: pnpm workspaces with Turborepo
 - **Testing**: Vitest with React Testing Library
 - **Linting**: Biome for code quality and formatting
+- **Unused code**: Knip for unused files, exports, and dependencies
 - **Git Hooks**: Husky with Commitlint and lint-staged
 - **CI/CD**: GitHub Actions with semantic-release
 
 ### Utilities
-- **Icons**: HugeIcons (primary), Simple Icons (brand)
+- **Icons**: HugeIcons
 - **Date Handling**: date-fns
 - **Query State**: nuqs for type-safe URL params
 - **3D Graphics**: Cobe for globe visualizations
@@ -112,6 +113,7 @@ Commits are validated via Commitlint with a 72 character header limit.
 ### Code Quality
 - Pre-commit hooks run linting and formatting via Husky
 - All commits must pass Biome checks
+- `pnpm knip` must stay clean (unused files, exports, and dependencies)
 - TypeScript strict mode is enforced
 - Tests should maintain coverage levels
 
