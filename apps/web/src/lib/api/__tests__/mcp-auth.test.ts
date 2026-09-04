@@ -13,9 +13,9 @@ vi.mock("@/lib/auth", () => {
 });
 
 // Mock the core verifier so OAuth token verification is exercised without a
-// real JWKS roundtrip. verifyAccessToken resolves a JWT payload or throws.
+// real JWKS roundtrip. verifyBearerToken resolves a JWT payload or throws.
 vi.mock("better-auth/oauth2", () => ({
-  verifyAccessToken: vi.fn(),
+  verifyBearerToken: vi.fn(),
 }));
 
 // Mock the database layer so the user lookup is exercised without a real
@@ -48,7 +48,7 @@ vi.mock("@/lib/api/oauth-protected-resource", () => ({
   OAUTH_RESOURCE: "https://auth.test/api/auth",
 }));
 
-import { verifyAccessToken } from "better-auth/oauth2";
+import { verifyBearerToken } from "better-auth/oauth2";
 import { OAUTH_RESOURCE } from "@/lib/api/oauth-protected-resource";
 import { auth } from "@/lib/auth";
 import { db } from "@/schema";
@@ -58,7 +58,7 @@ const mockGetSession = auth.api.getSession as unknown as ReturnType<
   typeof vi.fn
 >;
 
-const mockVerifyAccessToken = verifyAccessToken as unknown as ReturnType<
+const mockVerifyBearerToken = verifyBearerToken as unknown as ReturnType<
   typeof vi.fn
 >;
 
@@ -78,7 +78,7 @@ describe("validateMcpAuth", () => {
     mockGetSession.mockResolvedValue(null);
     mockUserLimit.mockResolvedValue([]);
     // Default: an unrecognised bearer fails verification and falls through.
-    mockVerifyAccessToken.mockRejectedValue(new Error("invalid token"));
+    mockVerifyBearerToken.mockRejectedValue(new Error("invalid token"));
     delete process.env.BLOG_MCP_AUTH_TOKEN;
   });
 
@@ -156,7 +156,7 @@ describe("validateMcpAuth", () => {
 
   describe("oauth access token", () => {
     it("should return oauth auth for a valid JWT access token", async () => {
-      mockVerifyAccessToken.mockResolvedValue({
+      mockVerifyBearerToken.mockResolvedValue({
         sub: "user-1",
         scope: "openid email",
         azp: "test-client",
@@ -187,7 +187,7 @@ describe("validateMcpAuth", () => {
     });
 
     it("should verify the token against the OAuth issuer as audience and issuer", async () => {
-      mockVerifyAccessToken.mockResolvedValue({
+      mockVerifyBearerToken.mockResolvedValue({
         sub: "user-1",
         scope: "openid",
       });
@@ -196,7 +196,7 @@ describe("validateMcpAuth", () => {
         makeRequest("oauth-access-token", "/api/usage/ingest"),
       );
 
-      expect(mockVerifyAccessToken).toHaveBeenCalledWith("oauth-access-token", {
+      expect(mockVerifyBearerToken).toHaveBeenCalledWith("oauth-access-token", {
         jwksUrl: `${OAUTH_RESOURCE}/jwks`,
         verifyOptions: {
           audience: OAUTH_RESOURCE,
@@ -206,7 +206,7 @@ describe("validateMcpAuth", () => {
     });
 
     it("should return null when verification fails", async () => {
-      mockVerifyAccessToken.mockRejectedValue(new Error("token expired"));
+      mockVerifyBearerToken.mockRejectedValue(new Error("token expired"));
       const result = await validateMcpAuth(
         makeRequest("expired-token", "/api/usage/ingest"),
       );
@@ -214,7 +214,7 @@ describe("validateMcpAuth", () => {
     });
 
     it("should return null when the token subject has no matching user", async () => {
-      mockVerifyAccessToken.mockResolvedValue({
+      mockVerifyBearerToken.mockResolvedValue({
         sub: "ghost",
         scope: "openid",
       });
@@ -225,7 +225,7 @@ describe("validateMcpAuth", () => {
     });
 
     it("should surface the user's role so the route can enforce admin", async () => {
-      mockVerifyAccessToken.mockResolvedValue({
+      mockVerifyBearerToken.mockResolvedValue({
         sub: "user-2",
         scope: "openid email",
         azp: "test-client",
@@ -248,7 +248,7 @@ describe("validateMcpAuth", () => {
     });
 
     it("should reject a token whose issuing client is disabled", async () => {
-      mockVerifyAccessToken.mockResolvedValue({
+      mockVerifyBearerToken.mockResolvedValue({
         sub: "user-1",
         scope: "openid email mcp",
         azp: "disabled-client",
@@ -262,7 +262,7 @@ describe("validateMcpAuth", () => {
     });
 
     it("should reject a token whose issuing client no longer exists", async () => {
-      mockVerifyAccessToken.mockResolvedValue({
+      mockVerifyBearerToken.mockResolvedValue({
         sub: "user-1",
         scope: "openid email mcp",
         azp: "ghost-client",
@@ -275,7 +275,7 @@ describe("validateMcpAuth", () => {
     });
 
     it("should surface scopes (including mcp) for an enabled client", async () => {
-      mockVerifyAccessToken.mockResolvedValue({
+      mockVerifyBearerToken.mockResolvedValue({
         sub: "user-1",
         scope: "openid email mcp",
         azp: "ok-client",
@@ -313,7 +313,7 @@ describe("validateMcpAuth", () => {
       );
 
       expect(result?.type).toBe("session");
-      expect(mockVerifyAccessToken).not.toHaveBeenCalled();
+      expect(mockVerifyBearerToken).not.toHaveBeenCalled();
     });
   });
 
