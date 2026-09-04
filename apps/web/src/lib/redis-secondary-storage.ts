@@ -15,12 +15,19 @@ export const redisSecondaryStorage: SecondaryStorage = {
   },
   increment: async (key, ttl) => {
     const namespaced = `${KEY_PREFIX}${key}`;
-    const value = await redis.incr(namespaced);
-    // Apply the TTL only on creation so the counter expires a fixed window
-    // after it was first created (per the SecondaryStorage contract).
-    if (value === 1) {
-      await redis.expire(namespaced, ttl);
-    }
-    return value;
+    // Atomic INCR + EXPIRE-via-Lua so a crashed invocation between the two
+    // can never leave a fixed-window counter without a TTL (which would
+    // rate-limit the key permanently). The TTL is still applied only on
+    // creation, preserving the fixed-window contract.
+    const value = (await redis.eval(
+      `local current = redis.call("INCR", KEYS[1])
+if current == 1 then
+  redis.call("EXPIRE", KEYS[1], ARGV[1])
+end
+return current`,
+      [namespaced],
+      [ttl],
+    )) as number;
+    return typeof value === "number" ? value : Number(value);
   },
 };
