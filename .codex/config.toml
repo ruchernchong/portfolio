@@ -7,4 +7,3 @@ command = "pnx"
 args = ["-y", "@heroui/react-mcp@latest"]
 
 [features]
-hooks = true
