@@ -37,7 +37,7 @@ jobs:
           persist-credentials: false
 
       - name: Setup
-        uses: $/.github/actions/setup
+        uses: ./.github/actions/setup # zizmor: ignore[self-repository]
 
       - parallel:
           - name: Run Lint
@@ -90,7 +90,7 @@ jobs:
           persist-credentials: true # semantic-release git commit
 
       - name: Setup
-        uses: $/.github/actions/setup
+        uses: ./.github/actions/setup # zizmor: ignore[self-repository]
 
       - name: Release
         env:
