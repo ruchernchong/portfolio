@@ -63,21 +63,21 @@ export function buildPricingFromRegistry(entries: ModelEntry[]): Pricing {
   // gpt-5-codex). A parallel index keyed by `canonicalSlug` absorbs the
   // punctuation differences between sources (AI Gateway's `claude-opus-4.8` vs
   // the logs' `claude-opus-4-8`); it is only consulted when the exact id misses.
-  const byProvider: Record<string, Record<string, ModelRate>> = {};
-  const byProviderCanonical: Record<string, Record<string, ModelRate>> = {};
-  const aliasByProvider: Record<string, Record<string, string>> = {};
+  const byProvider: Record<string, Record<string, ModelRate>> = Object.create(null);
+  const byProviderCanonical: Record<string, Record<string, ModelRate>> = Object.create(null);
+  const aliasByProvider: Record<string, Record<string, string>> = Object.create(null);
 
   for (const entry of entries) {
     if (entry.aliasTarget) {
-      aliasByProvider[entry.provider] ??= {};
+      aliasByProvider[entry.provider] ??= Object.create(null);
       aliasByProvider[entry.provider][entry.id] = entry.aliasTarget;
     }
     if (!entry.rate) continue;
     const rate = toRate(entry.rate);
     if (!rate) continue;
-    byProvider[entry.provider] ??= {};
+    byProvider[entry.provider] ??= Object.create(null);
     byProvider[entry.provider][entry.id] = rate;
-    byProviderCanonical[entry.provider] ??= {};
+    byProviderCanonical[entry.provider] ??= Object.create(null);
     // First entry wins, so an exact-id duplicate never displaces an earlier one.
     byProviderCanonical[entry.provider][canonicalSlug(entry.id)] ??= rate;
   }
