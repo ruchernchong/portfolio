@@ -63,23 +63,32 @@ export function buildPricingFromRegistry(entries: ModelEntry[]): Pricing {
   // gpt-5-codex). A parallel index keyed by `canonicalSlug` absorbs the
   // punctuation differences between sources (AI Gateway's `claude-opus-4.8` vs
   // the logs' `claude-opus-4-8`); it is only consulted when the exact id misses.
-  const byProvider: Record<string, Record<string, ModelRate>> = {};
-  const byProviderCanonical: Record<string, Record<string, ModelRate>> = {};
-  const aliasByProvider: Record<string, Record<string, string>> = {};
+  const byProvider = new Map<string, Map<string, ModelRate>>();
+  const byProviderCanonical = new Map<string, Map<string, ModelRate>>();
+  const aliasByProvider = new Map<string, Map<string, string>>();
 
   for (const entry of entries) {
     if (entry.aliasTarget) {
-      aliasByProvider[entry.provider] ??= {};
-      aliasByProvider[entry.provider][entry.id] = entry.aliasTarget;
+      const providerAliases =
+        aliasByProvider.get(entry.provider) ?? new Map<string, string>();
+      providerAliases.set(entry.id, entry.aliasTarget);
+      aliasByProvider.set(entry.provider, providerAliases);
     }
     if (!entry.rate) continue;
     const rate = toRate(entry.rate);
     if (!rate) continue;
-    byProvider[entry.provider] ??= {};
-    byProvider[entry.provider][entry.id] = rate;
-    byProviderCanonical[entry.provider] ??= {};
+    const providerRates =
+      byProvider.get(entry.provider) ?? new Map<string, ModelRate>();
+    providerRates.set(entry.id, rate);
+    byProvider.set(entry.provider, providerRates);
+    const providerCanonicalRates =
+      byProviderCanonical.get(entry.provider) ?? new Map<string, ModelRate>();
     // First entry wins, so an exact-id duplicate never displaces an earlier one.
-    byProviderCanonical[entry.provider][canonicalSlug(entry.id)] ??= rate;
+    const canonicalId = canonicalSlug(entry.id);
+    if (!providerCanonicalRates.has(canonicalId)) {
+      providerCanonicalRates.set(canonicalId, rate);
+    }
+    byProviderCanonical.set(entry.provider, providerCanonicalRates);
   }
 
   const warned = new Set<string>();
@@ -91,10 +100,10 @@ export function buildPricingFromRegistry(entries: ModelEntry[]): Pricing {
       opts?.provider ?? (agent ? AGENT_PROVIDERS[agent] : undefined);
     if (!provider) return null;
     // Resolve a provider-scoped alias (replaces the old agent-keyed MODEL_ALIASES).
-    const target = aliasByProvider[provider]?.[model] ?? model;
+    const target = aliasByProvider.get(provider)?.get(model) ?? model;
     return (
-      byProvider[provider]?.[target] ??
-      byProviderCanonical[provider]?.[canonicalSlug(target)] ??
+      byProvider.get(provider)?.get(target) ??
+      byProviderCanonical.get(provider)?.get(canonicalSlug(target)) ??
       null
     );
   }
