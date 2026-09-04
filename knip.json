@@ -1,0 +1,49 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "ignore": [".deepsec/**"],
+  "ignoreDependencies": [
+    "@commitlint/cli",
+    "@semantic-release/commit-analyzer",
+    "@semantic-release/github",
+    "@semantic-release/release-notes-generator",
+    "conventional-changelog-conventionalcommits",
+    "posthog-js",
+    "sharp"
+  ],
+  "rules": {
+    "duplicates": "off",
+    "enumMembers": "off",
+    "exports": "off",
+    "namespaceMembers": "off",
+    "nsExports": "off",
+    "nsTypes": "off",
+    "types": "off"
+  },
+  "workspaces": {
+    "apps/docs": {
+      "entry": ["src/lib/cn.ts"]
+    },
+    "apps/web": {
+      "entry": [
+        "src/app/**/about/components/about-card.tsx",
+        "src/app/**/about/components/contributions.tsx",
+        "src/app/**/about/components/experience-card.tsx",
+        "src/app/**/about/components/globe.tsx",
+        "src/app/**/about/components/location-card.tsx",
+        "src/app/**/blog/components/like-button.tsx",
+        "src/app/**/blog/components/like-counter.tsx",
+        "src/app/**/blog/components/mermaid.tsx",
+        "src/app/**/blog/components/popular-posts.tsx",
+        "src/app/**/blog/components/series-navigation.tsx",
+        "src/hooks/use-mobile.ts",
+        "src/lib/tags.ts",
+        "src/server/index.ts",
+        "src/utils/get-ip-address.ts",
+        "src/utils/stackoverflow.ts"
+      ]
+    },
+    "packages/mcp": {
+      "entry": ["src/tools/index.ts"]
+    }
+  }
+}

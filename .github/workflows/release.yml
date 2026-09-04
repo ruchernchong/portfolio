@@ -40,6 +40,9 @@ jobs:
           - name: Run Lint
             run: pnpm lint
 
+          - name: Run Knip
+            run: pnpm knip
+
           - name: Run Test
             env:
               BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
