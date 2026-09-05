@@ -204,6 +204,38 @@ describe("MCP API Route", () => {
       expect(serverInstance.close).toHaveBeenCalled();
       expect(transportInstance.close).toHaveBeenCalled();
     });
+
+    it("should still clean up when handling the request fails", async () => {
+      mockValidateMcpAuth.mockResolvedValue({ type: "token" });
+      vi.mocked(
+        WebStandardStreamableHTTPServerTransport,
+      ).mockImplementationOnce(function (
+        this: WebStandardStreamableHTTPServerTransport,
+      ) {
+        this.handleRequest = vi
+          .fn()
+          .mockRejectedValue(
+            new Error("transport exploded"),
+          ) as unknown as typeof this.handleRequest;
+        this.close = vi
+          .fn()
+          .mockResolvedValue(undefined) as unknown as typeof this.close;
+      });
+
+      const request = new Request("http://localhost/api/mcp", {
+        method: "POST",
+        body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" }),
+      });
+
+      await expect(POST(request)).rejects.toThrow("transport exploded");
+
+      const serverInstance = vi.mocked(createServer).mock.results[0].value;
+      const failedTransport = vi.mocked(
+        WebStandardStreamableHTTPServerTransport,
+      ).mock.results[0].value;
+      expect(serverInstance.close).toHaveBeenCalled();
+      expect(failedTransport.close).toHaveBeenCalled();
+    });
   });
 
   describe.each([

@@ -1,6 +1,7 @@
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { createServer } from "@workspace/mcp/server";
+import { methodNotAllowedResponse } from "@/lib/api";
 import { type McpAuthResult, validateMcpAuth } from "@/lib/api/mcp-auth";
 import { bearerChallenge, MCP_SCOPE } from "@/lib/api/oauth-protected-resource";
 
@@ -53,10 +54,7 @@ async function requireMcpAuth(
 const ALLOW = "POST, OPTIONS";
 
 function methodNotAllowed(): Response {
-  return Response.json(
-    { error: "Method not allowed" },
-    { status: 405, headers: { Allow: ALLOW } },
-  );
+  return methodNotAllowedResponse(ALLOW);
 }
 
 export async function POST(request: Request) {
