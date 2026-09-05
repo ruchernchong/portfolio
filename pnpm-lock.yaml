@@ -216,7 +216,7 @@ importers:
         specifier: ^16.2.7
         version: 16.4.0
       node:
-        specifier: runtime:^26
+        specifier: runtime:^26.8.0
         version: runtime:26.8.1
       portless:
         specifier: 0.10.2
