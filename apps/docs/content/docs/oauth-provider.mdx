@@ -101,7 +101,7 @@ GET /api/auth/oauth2/authorize
   &code_challenge=<code_challenge>
   &code_challenge_method=S256
   &scope=openid%20email%20mcp
-  &resource=https://ruchern.dev
+  &resource=https://ruchern.dev/api/auth
   &state=<state>
 ```
 
@@ -119,7 +119,7 @@ curl -X POST "https://ruchern.dev/api/auth/oauth2/token" \
   -d "redirect_uri=<redirect_uri>" \
   -d "client_id=<client_id>" \
   -d "code_verifier=<code_verifier>" \
-  -d "resource=https://ruchern.dev"
+  -d "resource=https://ruchern.dev/api/auth"
 ```
 
 Pass `resource` in the token request body so Better Auth mints a JWT access token verifiable against the JWKS. Without it an opaque token is returned, which cannot be verified locally.
@@ -147,7 +147,7 @@ curl -X POST "https://ruchern.dev/api/auth/oauth2/token" \
   -d "grant_type=refresh_token" \
   -d "refresh_token=<refresh_token>" \
   -d "client_id=<client_id>" \
-  -d "resource=https://ruchern.dev"
+  -d "resource=https://ruchern.dev/api/auth"
 ```
 
 Pass `resource` on every refresh request. Better Auth only mints a JWT access token when `resource` is present; omitting it returns an opaque token that cannot be verified locally.
@@ -170,7 +170,7 @@ Access and refresh tokens are stored hashed in the provider's database.
 
 - Register a public client and store the returned `client_id`.
 - Generate a fresh PKCE `code_verifier`/`code_challenge` per authorization.
-- Pass `resource=https://ruchern.dev` (or the target API base URL) at authorize **and** on every token refresh so the issued access token is a verifiable JWT.
+- Pass `resource=https://ruchern.dev/api/auth` at authorize **and** on every token request (exchange and refresh). This is the only resource the provider registers, matching the identifier published at `/.well-known/oauth-protected-resource`; any other value returns `invalid_target`. It is what makes the issued access token a verifiable JWT.
 - Request `offline_access` if the client needs to refresh without re-prompting.
 - Persist tokens securely; treat the JWT as opaque other than honouring its expiry.
 

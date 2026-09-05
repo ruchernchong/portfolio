@@ -4,6 +4,7 @@ import { betterAuth } from "better-auth/minimal";
 import { nextCookies } from "better-auth/next-js";
 import { admin, jwt, lastLoginMethod, oAuthProxy } from "better-auth/plugins";
 import { bearer } from "better-auth/plugins/bearer";
+import { OAUTH_RESOURCE } from "@/lib/api/oauth-protected-resource";
 import { redisSecondaryStorage } from "@/lib/redis-secondary-storage";
 import { db } from "@/schema";
 
@@ -68,6 +69,16 @@ export const auth = betterAuth({
       // "openid" keeps this an OIDC server; "mcp" gates access to the MCP API
       // (see validateMcpAuth) so an identity-only token cannot write content.
       scopes: ["openid", "profile", "email", "offline_access", "mcp"],
+      // 1.7 resolves every RFC 8707 `resource` against the oauth_resource
+      // table and links clients to it. Seed the MCP resource and let DCR
+      // clients request/inherit it, otherwise authorize returns invalid_target
+      // and tokens without a resource are opaque (not JWTs) so validateMcpAuth
+      // cannot verify them.
+      resources: [OAUTH_RESOURCE],
+      clientRegistrationDefaultResources: [OAUTH_RESOURCE],
+      clientRegistrationAllowedResources: [OAUTH_RESOURCE],
+      // Clients registered before 1.7 have no oauth_client_resource link.
+      enforcePerClientResources: false,
     }),
     nextCookies(), // Must be the last plugin
   ],
