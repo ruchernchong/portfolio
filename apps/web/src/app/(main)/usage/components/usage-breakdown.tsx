@@ -34,7 +34,7 @@ import {
   type UsageBreakdownView,
   type UsageSortColumn,
   usageSearchParams,
-} from "../search-params";
+} from "../searchParams";
 import { FreeModelChip } from "./free-model-chip";
 
 export interface BreakdownView {

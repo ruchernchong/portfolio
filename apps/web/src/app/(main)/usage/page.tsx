@@ -1,3 +1,4 @@
+import type { UsageProfile } from "@workspace/usage/types";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { PageHeader } from "@/app/components/page-header";
@@ -42,8 +43,6 @@ export const metadata: Metadata = {
     canonical,
   },
 };
-
-type UsageProfile = Awaited<ReturnType<typeof getUsageProfile>>;
 
 export default async function UsagePage() {
   const profile = await getUsageProfile();

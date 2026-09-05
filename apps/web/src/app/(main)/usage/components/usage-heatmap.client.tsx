@@ -6,7 +6,7 @@ import type { HeatmapLayout } from "@workspace/usage/heatmap-layout";
 import { useQueryState } from "nuqs";
 import { useEffect, useState } from "react";
 import { APP_LOCALE, APP_TIME_ZONE } from "@/constants/date-time";
-import { usageSearchParams } from "../search-params";
+import { usageSearchParams } from "../searchParams";
 import { HeatmapGridClient } from "./heatmap-grid.client";
 
 export interface HeatmapYear {
