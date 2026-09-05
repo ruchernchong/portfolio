@@ -1,4 +1,6 @@
+import type { UsageProfile } from "@workspace/usage/types";
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { PageHeader } from "@/app/components/page-header";
 import { SurfaceCard } from "@/app/components/surface-card";
 import globalMetadata from "@/app/metadata";
@@ -7,7 +9,10 @@ import {
   getProviderDisplayNames,
 } from "@/lib/queries/models";
 import { getUsageProfile } from "@/lib/queries/usage";
-import { UsageBreakdown } from "./components/usage-breakdown";
+import {
+  type BreakdownView,
+  UsageBreakdown,
+} from "./components/usage-breakdown";
 import { UsageEffortLevels } from "./components/usage-effort-levels";
 import { UsageHeatmap } from "./components/usage-heatmap";
 import { UsageLastUpdated } from "./components/usage-last-updated";
@@ -60,10 +65,15 @@ export default async function UsagePage() {
         modelDisplayNames={modelDisplayNames}
       />
 
-      <UsageHeatmap
-        contributions={profile.contributions}
-        modelDisplayNames={modelDisplayNames}
-      />
+      {/* The heatmap and breakdown read `?year=` / `?view=` via nuqs, which
+          uses useSearchParams; under Cache Components that must sit inside a
+          Suspense boundary so the rest of the page stays a static shell. */}
+      <Suspense>
+        <UsageHeatmap
+          contributions={profile.contributions}
+          modelDisplayNames={modelDisplayNames}
+        />
+      </Suspense>
 
       <div className="grid gap-4 lg:grid-cols-[5fr_7fr]">
         <UsageTokenMix tokenMix={profile.tokenMix} />
@@ -72,38 +82,42 @@ export default async function UsagePage() {
 
       {profile.effort ? <UsageEffortLevels effort={profile.effort} /> : null}
 
-      <UsageBreakdown
-        providerDisplayNames={providerDisplayNames}
-        modelDisplayNames={modelDisplayNames}
-        title="Breakdown"
-        views={[
-          {
-            id: "model",
-            label: "Model",
-            description: "Tokens and cost grouped by model",
-            rows: profile.byModel,
-          },
-          {
-            id: "provider",
-            label: "Provider",
-            description: "Tokens and cost grouped by provider",
-            rows: profile.byProvider,
-          },
-          {
-            id: "agent",
-            label: "Agent",
-            description: "Tokens and cost grouped by agent",
-            rows: profile.byAgent,
-          },
-        ]}
-      />
+      <Suspense>
+        <UsageBreakdown
+          providerDisplayNames={providerDisplayNames}
+          modelDisplayNames={modelDisplayNames}
+          title="Breakdown"
+          views={getBreakdownViews(profile)}
+        />
+      </Suspense>
     </SurfaceCard>
   );
 }
 
-function getUsageProviderIds(
-  profile: Awaited<ReturnType<typeof getUsageProfile>>,
-) {
+function getBreakdownViews(profile: UsageProfile): BreakdownView[] {
+  return [
+    {
+      id: "model",
+      label: "Model",
+      description: "Tokens and cost grouped by model",
+      rows: profile.byModel,
+    },
+    {
+      id: "provider",
+      label: "Provider",
+      description: "Tokens and cost grouped by provider",
+      rows: profile.byProvider,
+    },
+    {
+      id: "agent",
+      label: "Agent",
+      description: "Tokens and cost grouped by agent",
+      rows: profile.byAgent,
+    },
+  ];
+}
+
+function getUsageProviderIds(profile: UsageProfile) {
   return [
     ...new Set([
       ...profile.summary.providers,
@@ -116,9 +130,7 @@ function getUsageProviderIds(
   ].sort();
 }
 
-function getUsageModelIds(
-  profile: Awaited<ReturnType<typeof getUsageProfile>>,
-) {
+function getUsageModelIds(profile: UsageProfile) {
   return [
     ...new Set([
       ...profile.summary.models,

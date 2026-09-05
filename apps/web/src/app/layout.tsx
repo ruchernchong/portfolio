@@ -3,6 +3,7 @@ import { Analytics as VercelAnalytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import type { Metadata } from "next";
 import { Figtree, Geist_Mono } from "next/font/google";
+import { NuqsAdapter } from "nuqs/adapters/next/app";
 import type { ReactNode } from "react";
 import { ThemeProvider } from "@/components/theme-provider";
 import { BASE_URL, SITE_DESCRIPTION, SITE_NAME } from "@/config";
@@ -73,17 +74,19 @@ export default function RootLayout({
       <body
         className={`bg-background text-foreground antialiased ${geistMono.variable}`}
       >
-        <ThemeProvider>
-          <PostHogProvider
-            apiKey={process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN}
-            clientOptions={{ api_host: "/ingest" }}
-          >
-            <PostHogPageView />
-            {children}
-            <VercelAnalytics />
-            <SpeedInsights />
-          </PostHogProvider>
-        </ThemeProvider>
+        <NuqsAdapter>
+          <ThemeProvider>
+            <PostHogProvider
+              apiKey={process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN}
+              clientOptions={{ api_host: "/ingest" }}
+            >
+              <PostHogPageView />
+              {children}
+              <VercelAnalytics />
+              <SpeedInsights />
+            </PostHogProvider>
+          </ThemeProvider>
+        </NuqsAdapter>
       </body>
     </html>
   );

@@ -27,11 +27,18 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { providerLogoUrl } from "@workspace/usage/providers";
 import type { Cost, UsageBreakdownRow } from "@workspace/usage/types";
 import Image from "next/image";
+import { useQueryStates } from "nuqs";
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import {
+  USAGE_SORT_COLUMNS,
+  type UsageBreakdownView,
+  type UsageSortColumn,
+  usageParsers,
+} from "../searchParams";
 import { FreeModelChip } from "./free-model-chip";
 
-interface BreakdownView {
-  id: string;
+export interface BreakdownView {
+  id: UsageBreakdownView;
   label: string;
   description: string;
   rows: UsageBreakdownRow[];
@@ -59,10 +66,21 @@ const GRID_ROW_HEIGHT = 52;
 const GRID_HEADING_HEIGHT = 36;
 const GRID_SCROLL_CLASS = "max-h-[400px] overflow-auto";
 
-const DEFAULT_SORT_DESCRIPTOR: DataGridSortDescriptor = {
-  column: "tokens",
-  direction: "descending",
+/** Breakdown state that lives in the URL. Defaults are kept out of the query string. */
+const breakdownParsers = {
+  view: usageParsers.view,
+  q: usageParsers.q.withOptions({
+    limitUrlUpdates: { method: "debounce", timeMs: 300 },
+  }),
+  provider: usageParsers.provider,
+  free: usageParsers.free,
+  sort: usageParsers.sort,
+  dir: usageParsers.dir,
 };
+
+function isSortColumn(column: unknown): column is UsageSortColumn {
+  return USAGE_SORT_COLUMNS.includes(column as UsageSortColumn);
+}
 
 /** Sort N.A. costs below every priced value (when sorted descending). */
 const sortableCost = (cost: Cost): number => cost ?? Number.NEGATIVE_INFINITY;
@@ -508,32 +526,66 @@ export function UsageBreakdown({
   title,
   views,
 }: UsageBreakdownProps) {
-  const [selectedKey, setSelectedKey] = useState<string>(views[0]?.id);
-  const [search, setSearch] = useState("");
-  const [providerFilter, setProviderFilter] = useState("all");
-  const [freeFilter, setFreeFilter] = useState("all");
+  // The URL is the source of truth for view, filters, and sort, so a filtered
+  // breakdown is shareable. Column visibility is a display preference and stays local.
+  const [
+    {
+      view: selectedKey,
+      q: search,
+      provider: providerFilter,
+      free: isFreeOnly,
+      sort,
+      dir,
+    },
+    setBreakdown,
+  ] = useQueryStates(breakdownParsers, { history: "replace" });
+  const freeFilter = isFreeOnly ? "free" : "all";
+  const sortDescriptor = useMemo<DataGridSortDescriptor>(
+    () => ({
+      column: sort,
+      direction: dir === "asc" ? "ascending" : "descending",
+    }),
+    [sort, dir],
+  );
   const [visibleColumns, setVisibleColumns] = useState<DataGridSelection>(
     new Set(HIDEABLE_COLUMNS.map((column) => column.id)),
-  );
-  const [sortDescriptor, setSortDescriptor] = useState<DataGridSortDescriptor>(
-    DEFAULT_SORT_DESCRIPTOR,
   );
   const gridRef = useRef<HTMLDivElement>(null);
 
   const active = views.find((view) => view.id === selectedKey) ?? views[0];
 
-  const handleViewChange = (key: string) => {
-    setSelectedKey(key);
-    setSearch("");
-    setProviderFilter("all");
-    setFreeFilter("all");
-    setSortDescriptor(DEFAULT_SORT_DESCRIPTOR);
+  const setSearch = (q: string) => setBreakdown({ q });
+  const setProviderFilter = (provider: string) => setBreakdown({ provider });
+  const setFreeFilter = (value: string) =>
+    setBreakdown({ free: value === "free" });
+  const setSortDescriptor = (descriptor: DataGridSortDescriptor) => {
+    if (!isSortColumn(descriptor.column)) {
+      return;
+    }
+    setBreakdown({
+      sort: descriptor.column,
+      dir: descriptor.direction === "ascending" ? "asc" : "desc",
+    });
+  };
+
+  const handleViewChange = (key: string | number) => {
+    const next = views.find((view) => view.id === String(key));
+    if (!next) {
+      return;
+    }
+    // `null` resets each key to its default and drops it from the URL.
+    setBreakdown({
+      view: next.id,
+      q: null,
+      provider: null,
+      free: null,
+      sort: null,
+      dir: null,
+    });
   };
 
   const handleClearFilters = () => {
-    setSearch("");
-    setProviderFilter("all");
-    setFreeFilter("all");
+    setBreakdown({ q: null, provider: null, free: null });
   };
 
   const providerOptions = useMemo<ProviderOption[]>(() => {
@@ -666,7 +718,7 @@ export function UsageBreakdown({
         </div>
         <Segment
           selectedKey={selectedKey}
-          onSelectionChange={(key) => handleViewChange(String(key))}
+          onSelectionChange={handleViewChange}
           size="sm"
         >
           {views.map((view) => (
