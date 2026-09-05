@@ -3,8 +3,10 @@
 import { Button, cn } from "@heroui/react";
 import { INTENSITY_CLASSES } from "@workspace/usage";
 import type { HeatmapLayout } from "@workspace/usage/heatmap-layout";
+import { useQueryState } from "nuqs";
 import { useEffect, useState } from "react";
 import { APP_LOCALE, APP_TIME_ZONE } from "@/constants/date-time";
+import { usageSearchParams } from "../search-params";
 import { HeatmapGridClient } from "./heatmap-grid.client";
 
 export interface HeatmapYear {
@@ -46,7 +48,11 @@ export function UsageHeatmapClient({
   modelDisplayNames,
   years,
 }: UsageHeatmapClientProps) {
-  const [selectedYear, setSelectedYear] = useState(years[0].year);
+  // `?year=` is the source of truth; an unknown year falls back to the newest.
+  const [selectedYear, setSelectedYear] = useQueryState(
+    "year",
+    usageSearchParams.year.withOptions({ history: "replace" }),
+  );
   const [today, setToday] = useState<string | null>(null);
   const active = years.find((y) => y.year === selectedYear) ?? years[0];
 
