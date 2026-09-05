@@ -99,6 +99,13 @@
       "when": 1785774378228,
       "tag": "0013_natural_scalphunter",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1788607911778,
+      "tag": "0014_faulty_catseye",
+      "breakpoints": true
     }
   ]
 }
