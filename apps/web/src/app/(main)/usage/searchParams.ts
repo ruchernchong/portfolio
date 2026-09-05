@@ -19,8 +19,8 @@ export const USAGE_SORT_COLUMNS = [
 
 export type UsageSortColumn = (typeof USAGE_SORT_COLUMNS)[number];
 
-/** Shared by the server page and the `useQueryState(s)` calls on the client. */
-export const usageSearchParams = {
+/** Shared by the `useQueryState(s)` calls in the usage client components. */
+export const usageParsers = {
   /**
    * Calendar year shown in the heatmap. Defaults to the current year so it is
    * kept out of the URL; the heatmap falls back to the newest year with data

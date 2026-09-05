@@ -33,7 +33,7 @@ import {
   USAGE_SORT_COLUMNS,
   type UsageBreakdownView,
   type UsageSortColumn,
-  usageSearchParams,
+  usageParsers,
 } from "../searchParams";
 import { FreeModelChip } from "./free-model-chip";
 
@@ -66,25 +66,16 @@ const GRID_ROW_HEIGHT = 52;
 const GRID_HEADING_HEIGHT = 36;
 const GRID_SCROLL_CLASS = "max-h-[400px] overflow-auto";
 
-const {
-  view: viewParser,
-  q: qParser,
-  provider: providerParser,
-  free: freeParser,
-  sort: sortParser,
-  dir: dirParser,
-} = usageSearchParams;
-
 /** Breakdown state that lives in the URL. Defaults are kept out of the query string. */
-const breakdownSearchParams = {
-  view: viewParser,
-  q: qParser.withOptions({
+const breakdownParsers = {
+  view: usageParsers.view,
+  q: usageParsers.q.withOptions({
     limitUrlUpdates: { method: "debounce", timeMs: 300 },
   }),
-  provider: providerParser,
-  free: freeParser,
-  sort: sortParser,
-  dir: dirParser,
+  provider: usageParsers.provider,
+  free: usageParsers.free,
+  sort: usageParsers.sort,
+  dir: usageParsers.dir,
 };
 
 function isSortColumn(column: unknown): column is UsageSortColumn {
@@ -537,17 +528,24 @@ export function UsageBreakdown({
 }: UsageBreakdownProps) {
   // The URL is the source of truth for view, filters, and sort, so a filtered
   // breakdown is shareable. Column visibility is a display preference and stays local.
-  const [params, setParams] = useQueryStates(breakdownSearchParams, {
-    history: "replace",
-  });
-  const { view: selectedKey, q: search, provider: providerFilter } = params;
-  const freeFilter = params.free ? "free" : "all";
+  const [
+    {
+      view: selectedKey,
+      q: search,
+      provider: providerFilter,
+      free: isFreeOnly,
+      sort,
+      dir,
+    },
+    setBreakdown,
+  ] = useQueryStates(breakdownParsers, { history: "replace" });
+  const freeFilter = isFreeOnly ? "free" : "all";
   const sortDescriptor = useMemo<DataGridSortDescriptor>(
     () => ({
-      column: params.sort,
-      direction: params.dir === "asc" ? "ascending" : "descending",
+      column: sort,
+      direction: dir === "asc" ? "ascending" : "descending",
     }),
-    [params.sort, params.dir],
+    [sort, dir],
   );
   const [visibleColumns, setVisibleColumns] = useState<DataGridSelection>(
     new Set(HIDEABLE_COLUMNS.map((column) => column.id)),
@@ -556,15 +554,15 @@ export function UsageBreakdown({
 
   const active = views.find((view) => view.id === selectedKey) ?? views[0];
 
-  const setSearch = (q: string) => setParams({ q });
-  const setProviderFilter = (provider: string) => setParams({ provider });
+  const setSearch = (q: string) => setBreakdown({ q });
+  const setProviderFilter = (provider: string) => setBreakdown({ provider });
   const setFreeFilter = (value: string) =>
-    setParams({ free: value === "free" });
+    setBreakdown({ free: value === "free" });
   const setSortDescriptor = (descriptor: DataGridSortDescriptor) => {
     if (!isSortColumn(descriptor.column)) {
       return;
     }
-    setParams({
+    setBreakdown({
       sort: descriptor.column,
       dir: descriptor.direction === "ascending" ? "asc" : "desc",
     });
@@ -576,7 +574,7 @@ export function UsageBreakdown({
       return;
     }
     // `null` resets each key to its default and drops it from the URL.
-    setParams({
+    setBreakdown({
       view: next.id,
       q: null,
       provider: null,
@@ -587,7 +585,7 @@ export function UsageBreakdown({
   };
 
   const handleClearFilters = () => {
-    setParams({ q: null, provider: null, free: null });
+    setBreakdown({ q: null, provider: null, free: null });
   };
 
   const providerOptions = useMemo<ProviderOption[]>(() => {

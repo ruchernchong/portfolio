@@ -6,7 +6,7 @@ import type { HeatmapLayout } from "@workspace/usage/heatmap-layout";
 import { useQueryState } from "nuqs";
 import { useEffect, useState } from "react";
 import { APP_LOCALE, APP_TIME_ZONE } from "@/constants/date-time";
-import { usageSearchParams } from "../searchParams";
+import { usageParsers } from "../searchParams";
 import { HeatmapGridClient } from "./heatmap-grid.client";
 
 export interface HeatmapYear {
@@ -51,7 +51,7 @@ export function UsageHeatmapClient({
   // `?year=` is the source of truth; an unknown year falls back to the newest.
   const [selectedYear, setSelectedYear] = useQueryState(
     "year",
-    usageSearchParams.year.withOptions({ history: "replace" }),
+    usageParsers.year.withOptions({ history: "replace" }),
   );
   const [today, setToday] = useState<string | null>(null);
   const active = years.find((y) => y.year === selectedYear) ?? years[0];
