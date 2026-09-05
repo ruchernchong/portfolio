@@ -60,8 +60,11 @@ export const listOAuthClients = async (): Promise<OAuthClientListItem[]> => {
     clientId: client.clientId,
     name: client.name,
     disabled: client.disabled ?? false,
-    public: client.public,
-    type: client.type,
+    // 1.7: public clients use token_endpoint_auth_method "none";
+    // application_type is web|native only and does not imply public.
+    // https://better-auth.com/docs/plugins/oauth-provider
+    public: client.tokenEndpointAuthMethod === "none",
+    type: client.applicationType,
     scopes: client.scopes,
     redirectUris: client.redirectUris,
     createdAt: client.createdAt,
