@@ -50,11 +50,21 @@ async function requireMcpAuth(
   return { authResult };
 }
 
+const ALLOW = "POST, OPTIONS";
+
+function methodNotAllowed(): Response {
+  return Response.json(
+    { error: "Method not allowed" },
+    { status: 405, headers: { Allow: ALLOW } },
+  );
+}
+
 export async function POST(request: Request) {
   const gate = await requireMcpAuth(request);
   if ("error" in gate) return gate.error;
   const { authResult } = gate;
 
+  // Stateless mode: fresh transport + server per request, no session tracking.
   const transport = new WebStandardStreamableHTTPServerTransport({
     sessionIdGenerator: undefined,
     enableJsonResponse: true,
@@ -68,49 +78,39 @@ export async function POST(request: Request) {
     handleOptions.authInfo = authResult.authInfo;
   }
 
-  return transport.handleRequest(request, handleOptions);
+  try {
+    return await transport.handleRequest(request, handleOptions);
+  } finally {
+    await server.close().catch(() => {});
+    await transport.close().catch(() => {});
+  }
 }
 
-export async function GET(request: Request) {
-  const gate = await requireMcpAuth(request);
-  if ("error" in gate) return gate.error;
-
-  return Response.json({ status: "ok", service: "mcp-blog" });
+export async function GET() {
+  return methodNotAllowed();
 }
 
-export async function DELETE(request: Request) {
-  const gate = await requireMcpAuth(request);
-  if ("error" in gate) return gate.error;
-
-  return new Response(null, { status: 204 });
+export async function DELETE() {
+  return methodNotAllowed();
 }
 
 export async function OPTIONS() {
   return new Response(null, {
     status: 204,
     headers: {
-      Allow: "GET, POST, DELETE, OPTIONS",
+      Allow: ALLOW,
     },
   });
 }
 
-export async function HEAD(request: Request) {
-  const gate = await requireMcpAuth(request);
-  if ("error" in gate) return gate.error;
-
-  return Response.json({ status: "ok", service: "mcp-blog" });
+export async function HEAD() {
+  return methodNotAllowed();
 }
 
 export async function PUT() {
-  return Response.json(
-    { error: "Method not allowed" },
-    { status: 405, headers: { Allow: "GET, POST, DELETE, OPTIONS" } },
-  );
+  return methodNotAllowed();
 }
 
 export async function PATCH() {
-  return Response.json(
-    { error: "Method not allowed" },
-    { status: 405, headers: { Allow: "GET, POST, DELETE, OPTIONS" } },
-  );
+  return methodNotAllowed();
 }
