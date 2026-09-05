@@ -52,6 +52,18 @@ export function conflictResponse(
 }
 
 /**
+ * Creates a 405 method not allowed response.
+ *
+ * @param allow - Value for the Allow header (e.g., "POST, OPTIONS")
+ */
+export function methodNotAllowedResponse(allow: string): NextResponse {
+  return NextResponse.json(
+    { error: "Method not allowed" },
+    { status: 405, headers: { Allow: allow } },
+  );
+}
+
+/**
  * Creates a 500 internal server error response.
  *
  * @param action - Action that failed (e.g., "fetch media", "update post")

@@ -7,6 +7,7 @@ export {
   internalErrorResponse,
   isDatabaseError,
   isUniqueConstraintError,
+  methodNotAllowedResponse,
   notFoundResponse,
 } from "./errors";
 export { validateRouteParam } from "./params";
