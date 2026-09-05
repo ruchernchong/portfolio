@@ -59,5 +59,16 @@
   "lint-staged": {
     "*.{js,ts,jsx,tsx,json,css,md,mdx}": "biome check --write --no-errors-on-unmatched"
   },
-  "packageManager": "pnpm@11.5.3"
+  "devEngines": {
+    "packageManager": {
+      "name": "pnpm",
+      "version": "^12.3.4",
+      "onFail": "download"
+    },
+    "runtime": {
+      "name": "node",
+      "version": "^26.8.0",
+      "onFail": "download"
+    }
+  }
 }
