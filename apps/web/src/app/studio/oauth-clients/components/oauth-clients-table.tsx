@@ -442,9 +442,11 @@ function OAuthClientDetailModal({
                         </dd>
                       </div>
                       <div className="flex gap-2">
-                        <dt className="text-muted">Type:</dt>
+                        <dt className="text-muted">Auth:</dt>
                         <dd>
-                          {detail.client.public ? "Public" : "Confidential"}
+                          {detail.client.tokenEndpointAuthMethod === "none"
+                            ? "Public"
+                            : "Confidential"}
                         </dd>
                       </div>
                       <div className="flex flex-col gap-1">
