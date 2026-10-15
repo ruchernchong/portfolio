@@ -1,3 +1,9 @@
+## [1.56.5](https://github.com/ruchernchong/blog/compare/v1.56.4...v1.56.5) (2026-10-15)
+
+### Bug Fixes
+
+* skip degraded sources in registry merge ([f3d68ed](https://github.com/ruchernchong/blog/commit/f3d68eded5f4cdbecaece62444f37ceacf2cfd3a))
+
 ## [1.56.4](https://github.com/ruchernchong/blog/compare/v1.56.3...v1.56.4) (2026-10-15)
 
 ### Performance Improvements
