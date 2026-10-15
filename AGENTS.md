@@ -6,6 +6,8 @@ This file provides guidance to coding agents when working with code in this repo
 
 ### Development
 
+Never bypass the minimum package release age or add `minimumReleaseAgeExclude`; choose versions that satisfy the policy.
+
 - `pnpm dev` - Start the web development server via Turborepo (served on a `portless` `.localhost` URL, not raw `localhost:3000`)
 - `pnpm build` - Build all workspace packages
 - `pnpm start` - Start the web production server
@@ -211,7 +213,7 @@ A pnpm/Turborepo monorepo for the Next.js 16 portfolio website, private MCP serv
 
 ### Tech Stack
 
-- **Framework**: Next.js 16.3 with App Router and React 19.2
+- **Framework**: Next.js 16.4 with App Router and React 19.3
 - **Monorepo**: pnpm workspaces with Turborepo
 - **Content**: Database-backed MDX with next-mdx-remote
 - **Database**: Neon PostgreSQL with Drizzle ORM
@@ -232,6 +234,7 @@ A pnpm/Turborepo monorepo for the Next.js 16 portfolio website, private MCP serv
 - **OpenGraph Images**: Dynamic OG image generation via `opengraph-image.tsx` route files
 - **Series Support**: Organise posts into series with navigation and ordering
 - **Analytics**: PostHog-backed dashboard (Query API) with Vercel Analytics
+- **Public rendering**: Pages under `app/(main)` enforce `ensureStatic = "navigation"`. Data-backed server sections cache their rendered output with explicit `cacheLife` profiles; nested query tags propagate to those caches. Post changes invalidate list, featured, count, article and related-post caches, and series cards also depend on `posts:list`. Dashboard metrics prerender from cached queries (GitHub hourly, PostHog daily); authentication and Studio checks remain request-time. Article builds require at least one published slug from `generateStaticParams()`; `blog/[slug]/loading.tsx` provides the partial-prefetch shell while URL parameters resolve.
 - **Usage Page**: Public `/usage` page built from the cached `getUsageProfile()` (`lib/queries/usage.ts`). An editorial top half (generated summary, heatmap, "This period", stack shift, model character, cost vs volume, cache & effort) sits over an Explorer (DataGrid on desktop, card list on phones). A `?model=` profile drawer opens from the "View profile" buttons in Model character. Pure aggregation and shaping live in `@workspace/usage` (`narrative`, `period-comparison`, `weekly-insights`, `model-character`). Identity charts use the validated `--series-*` tokens in `globals.css`; magnitude uses the coral `--chart-*` ramp
 - **LLM SEO**: Dynamic `/llms.txt` endpoint for LLM crawlers
 - **RSS Feed**: Dynamic `/feed.xml` endpoint

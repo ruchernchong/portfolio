@@ -6,6 +6,8 @@ import {
 } from "@/lib/queries/posts";
 import { PostArticle } from "./components/post-article";
 
+export const ensureStatic = "navigation";
+
 interface PageProps {
   params: Promise<{ slug: string }>;
 }

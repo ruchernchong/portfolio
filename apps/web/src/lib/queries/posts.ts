@@ -44,7 +44,14 @@ export async function getFeaturedPosts() {
   return db
     .select()
     .from(posts)
-    .where(eq(posts.featured, true))
+    .where(
+      and(
+        eq(posts.featured, true),
+        eq(posts.status, "published"),
+        isNotNull(posts.publishedAt),
+        isNull(posts.deletedAt),
+      ),
+    )
     .orderBy(desc(posts.createdAt));
 }
 

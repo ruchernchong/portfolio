@@ -48,7 +48,7 @@ describe("cache-invalidation", () => {
       );
     });
 
-    it("should revalidate post, mdx, related, list and count tags", async () => {
+    it("should revalidate post, mdx, related and post collection tags", async () => {
       vi.mocked(redis.del).mockResolvedValue(undefined as any);
 
       await invalidatePost("test-post");
@@ -58,6 +58,7 @@ describe("cache-invalidation", () => {
       expect(revalidateTag).toHaveBeenCalledWith("related:test-post", "max");
       expect(revalidateTag).toHaveBeenCalledWith("posts:list", "max");
       expect(revalidateTag).toHaveBeenCalledWith("posts:count", "max");
+      expect(revalidateTag).toHaveBeenCalledWith("posts:featured", "max");
     });
   });
 
@@ -134,6 +135,7 @@ describe("cache-invalidation", () => {
         CacheConfig.REDIS_KEYS.POST_STATS("test-post"),
       );
       expect(revalidateTag).toHaveBeenCalledWith("related:test-post", "max");
+      expect(revalidateTag).toHaveBeenCalledWith("posts:featured", "max");
     });
 
     it("should run operations in parallel", async () => {

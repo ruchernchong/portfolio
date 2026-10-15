@@ -1,8 +1,12 @@
 import type { Route } from "next";
+import { cacheLife } from "next/cache";
 import Link from "next/link";
 import { getPublishedSeriesWithPosts } from "@/lib/queries/series";
 
 export async function SeriesCards() {
+  "use cache";
+  cacheLife("max");
+
   const publishedSeries = await getPublishedSeriesWithPosts();
 
   if (publishedSeries.length === 0) {

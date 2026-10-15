@@ -13,6 +13,7 @@ export async function invalidatePost(slug: string): Promise<void> {
   revalidateTag(`related:${slug}`, "max");
   revalidateTag("posts:list", "max");
   revalidateTag("posts:count", "max");
+  revalidateTag("posts:featured", "max");
 }
 
 /**

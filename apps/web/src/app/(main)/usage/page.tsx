@@ -1,6 +1,7 @@
 import { buildUsageNarrativeParts } from "@workspace/usage/narrative";
 import type { UsageProfile } from "@workspace/usage/types";
 import type { Metadata } from "next";
+import { cacheLife } from "next/cache";
 import { Suspense } from "react";
 import globalMetadata from "@/app/metadata";
 import {
@@ -47,7 +48,12 @@ export const metadata: Metadata = {
   },
 };
 
+export const ensureStatic = "navigation";
+
 export default async function UsagePage() {
+  "use cache";
+  cacheLife("days");
+
   const profile = await getUsageProfile();
   const [providerDisplayNames, modelDisplayNames, openWeightModelIds] =
     await Promise.all([

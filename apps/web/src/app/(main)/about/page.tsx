@@ -35,6 +35,8 @@ export const metadata: Metadata = {
   },
 };
 
+export const ensureStatic = "navigation";
+
 const yearOf = (date: string) => Number(date.split(" ").at(-1));
 const isShippingRole = (companyTitle: string) =>
   /developer|engineer/i.test(companyTitle);

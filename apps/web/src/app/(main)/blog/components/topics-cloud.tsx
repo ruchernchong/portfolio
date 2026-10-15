@@ -1,8 +1,12 @@
+import { cacheLife } from "next/cache";
 import { Suspense } from "react";
 import { getPublishedPosts } from "@/lib/queries/posts";
 import { ActiveTopicPills, TopicPills } from "./topics-cloud-pills.client";
 
 export async function TopicsCloud() {
+  "use cache";
+  cacheLife("max");
+
   const allPosts = await getPublishedPosts();
 
   const counts = new Map<string, number>();

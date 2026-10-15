@@ -12,6 +12,8 @@ export const metadata: Metadata = {
     "Writing on engineering, technology, and shipping side projects.",
 };
 
+export const ensureStatic = "navigation";
+
 export default function BlogPage() {
   // Every section reads only cached data, so the whole page prerenders into the
   // static shell. The `?tag=` filter is request-time, but it is resolved

@@ -30,6 +30,8 @@ export const metadata: Metadata = {
   },
 };
 
+export const ensureStatic = "navigation";
+
 export default function ProjectsPage() {
   const featuredProjects = projects.filter((project) => project.featured);
   const otherProjects = projects.filter((project) => !project.featured);
