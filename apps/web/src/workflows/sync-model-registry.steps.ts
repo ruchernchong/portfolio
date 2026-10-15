@@ -112,11 +112,12 @@ export async function refreshSource(source: RegistrySource) {
 }
 refreshSource.maxRetries = MAX_STEP_RETRIES;
 
-export async function mergeAndUpsert() {
+export async function mergeAndUpsert(sources: RegistrySource[]) {
   "use step";
 
-  // Re-reads each source from the Redis cache the fetch steps just warmed.
-  const { rows } = await syncModelRegistry();
+  // Re-reads each healthy source from the Redis cache the fetch steps just
+  // warmed; degraded ones stay empty rather than getting an unretried refetch.
+  const { rows } = await syncModelRegistry(sources);
   return { rows };
 }
 

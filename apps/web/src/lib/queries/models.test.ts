@@ -97,17 +97,12 @@ describe("syncModelRegistry source fetching", () => {
   });
 
   it("should let a curated DB override replace the seed for the same key", async () => {
-    redisGet.mockResolvedValue(null);
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue({ ok: false, status: 503 }),
-    );
     const { SEED_OVERRIDES } = await import("@workspace/usage/registry");
     const seed = SEED_OVERRIDES[0];
     const curated: ModelEntry = { ...seed, displayName: "Curated name" };
     whereRows.mockResolvedValue([curated]);
 
-    await syncModelRegistry();
+    await syncModelRegistry([]);
 
     const matches = upsertedEntries().filter(
       (e) => e.provider === seed.provider && e.id === seed.id,
@@ -116,17 +111,15 @@ describe("syncModelRegistry source fetching", () => {
     expect(matches[0].displayName).toBe("Curated name");
   });
 
-  it("should log a non-Error rejection when a source is skipped", async () => {
-    const { logWarning } = await import("@/lib/logger");
+  it("should leave out a degraded source without fetching it again", async () => {
     redisGet.mockResolvedValue(null);
-    vi.stubGlobal("fetch", vi.fn().mockRejectedValue("socket hang up"));
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
 
-    await syncModelRegistry();
+    await syncModelRegistry([]);
 
-    expect(logWarning).toHaveBeenCalledWith(
-      expect.stringContaining("Skipped"),
-      { error: "socket hang up" },
-    );
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(upsertedEntries().every((e) => e.isOverride)).toBe(true);
   });
 
   it("should return the upserted row count alongside the pricing", async () => {
@@ -172,16 +165,17 @@ describe("syncModelRegistry source fetching", () => {
     expect(upsertedEntries().some((e) => e.id === "gpt-5-codex")).toBe(true);
   });
 
-  it("should narrow the merge, not fail, when a source is down", async () => {
+  it("should reject, not drop, a healthy source that fails during the merge", async () => {
     redisGet.mockResolvedValue(null);
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue({ ok: false, status: 503 }),
     );
 
-    await expect(syncModelRegistry()).resolves.toBeDefined();
-    // Every live source failed, so only the seed overrides survive.
-    expect(upsertedEntries().every((e) => e.isOverride)).toBe(true);
+    await expect(syncModelRegistry(["gateway"])).rejects.toThrow(
+      "AI Gateway returned 503",
+    );
+    expect(upsertModelRegistry).not.toHaveBeenCalled();
   });
 
   it("should not fail a source when writing the cache back fails", async () => {
@@ -257,7 +251,7 @@ describe("refreshRegistrySource", () => {
     expect(redisSet).toHaveBeenCalledWith(
       "models:pricing",
       modelsDevPayload,
-      expect.objectContaining({ ex: 86_400 }),
+      expect.objectContaining({ ex: 3_600 }),
     );
   });
 

@@ -180,7 +180,15 @@ describe("mergeAndUpsert", () => {
   it("should return only the row count, keeping pricing out of the journal", async () => {
     syncModelRegistry.mockResolvedValue({ pricing: { big: true }, rows: 12 });
 
-    await expect(mergeAndUpsert()).resolves.toEqual({ rows: 12 });
+    await expect(mergeAndUpsert(["gateway"])).resolves.toEqual({ rows: 12 });
+  });
+
+  it("should merge only the sources whose refresh succeeded", async () => {
+    syncModelRegistry.mockResolvedValue({ pricing: {}, rows: 0 });
+
+    await mergeAndUpsert(["gateway", "openrouter"]);
+
+    expect(syncModelRegistry).toHaveBeenCalledWith(["gateway", "openrouter"]);
   });
 });
 
