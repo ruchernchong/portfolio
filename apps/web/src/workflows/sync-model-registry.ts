@@ -34,7 +34,9 @@ export async function syncModelRegistryWorkflow() {
   // reporting `degraded: true` on the stream and in the (encrypted) return value.
   const sources = await Promise.all(REGISTRY_SOURCES.map(refreshSource));
 
-  const { rows } = await mergeAndUpsert();
+  const { rows } = await mergeAndUpsert(
+    sources.filter((s) => !s.degraded).map((s) => s.source),
+  );
   const repriced = await repriceFromRegistry();
   await publishRegistry();
 

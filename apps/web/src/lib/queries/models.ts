@@ -11,13 +11,13 @@ import {
   normaliseModelsDev,
   normaliseOpenRouter,
   type OpenRouterApi,
+  REGISTRY_SOURCES,
   type RegistrySource,
   SEED_OVERRIDES,
 } from "@workspace/usage/registry";
 import { and, eq, inArray } from "drizzle-orm";
 import { cacheLife, cacheTag, revalidateTag } from "next/cache";
 import redis from "@/config/redis";
-import { logWarning } from "@/lib/logger";
 import { rowToEntry, upsertModelRegistry } from "@/lib/queries/model-registry";
 import { repriceUnpricedTokenUsage } from "@/lib/queries/usage";
 import { db, model } from "@/schema";
@@ -35,7 +35,12 @@ const OPENROUTER_URL = "https://openrouter.ai/api/v1/models";
 const MODELS_PRICING_CACHE_KEY = "models:pricing";
 const GATEWAY_CACHE_KEY = "models:gateway";
 const OPENROUTER_CACHE_KEY = "models:openrouter";
-const SOURCE_CACHE_TTL = 86_400;
+/**
+ * Only long enough to hand a source from its refresh step to the merge step.
+ * A day-long TTL let a sync started within a day of the last one read that
+ * run's payload instead of fetching, so a newly listed model waited a day.
+ */
+const SOURCE_CACHE_TTL = 3_600;
 
 /** Human-readable source names, for log lines and workflow step messages. */
 export const SOURCE_LABELS: Record<RegistrySource, string> = {
@@ -98,19 +103,27 @@ export async function loadPricing(): Promise<Pricing> {
  * (the only source covering reseller-routed providers such as OpenCode, which
  * bill at the reseller's rate) alongside the curated DB overrides. Merges by
  * precedence — override > Gateway > models.dev > OpenRouter for rates —
- * upserts the merged rows, and returns pricing built from them. A source that
- * fails to fetch is skipped, not fatal: the merge omits that layer and the
- * existing table rows survive as the last-good snapshot. Runs at the top of
- * a registry sync, scheduled by ingest at most once per 24 hours.
+ * upserts the merged rows, and returns pricing built from them.
+ *
+ * `sources` are the ones whose refresh step succeeded; the rest merge as empty
+ * layers without being fetched again. A listed source that now fails rejects,
+ * so the merge step retries instead of quietly dropping a source the run
+ * reports as healthy.
  */
-export async function syncModelRegistry(): Promise<{
+export async function syncModelRegistry(
+  sources: readonly RegistrySource[] = REGISTRY_SOURCES,
+): Promise<{
   pricing: Pricing;
   rows: number;
 }> {
+  const load = (
+    source: RegistrySource,
+    fetchEntries: () => Promise<ModelEntry[]>,
+  ) => (sources.includes(source) ? fetchEntries() : Promise.resolve([]));
   const [gateway, openrouter, modelsDev, overrides] = await Promise.all([
-    degradeOnFailure(SOURCE_LABELS.gateway, fetchGatewayEntries()),
-    degradeOnFailure(SOURCE_LABELS.openrouter, fetchOpenRouterEntries()),
-    degradeOnFailure(SOURCE_LABELS["models.dev"], fetchModelsDevEntries()),
+    load("gateway", fetchGatewayEntries),
+    load("openrouter", fetchOpenRouterEntries),
+    load("models.dev", fetchModelsDevEntries),
     loadOverrideEntries(),
   ]);
 
@@ -161,16 +174,13 @@ function seedOverrides(dbOverrides: ModelEntry[]): ModelEntry[] {
 }
 
 /**
- * Fetch one JSON source through the Redis day-cache and normalise it.
+ * Fetch one JSON source through the short-lived Redis cache and normalise it.
  *
- * **Throws** on failure, deliberately. Degrading is the caller's decision, not
- * this function's, because the two callers want it at different moments: the
- * sync workflow lets the failure reach its step boundary so the step retries,
- * and only degrades once those retries are exhausted, while
- * {@link syncModelRegistry} has no retry machinery behind it and degrades at
- * once through {@link degradeOnFailure}. Swallowing here made the workflow's
- * per-source retry unreachable — the step always succeeded, with an empty
- * layer, on the first transient error.
+ * **Throws** on failure, deliberately. Degrading is the sync workflow's
+ * decision: it lets the failure reach its step boundary so the step retries,
+ * and only degrades once those retries are exhausted. Swallowing here made the
+ * workflow's per-source retry unreachable — the step always succeeded, with an
+ * empty layer, on the first transient error.
  */
 async function fetchSourceEntries<T>(
   label: string,
@@ -197,25 +207,6 @@ async function fetchSourceEntries<T>(
     // Pricing can still be built from the fresh response if Redis is down.
   }
   return normalise(json);
-}
-
-/**
- * Degrade one source to an empty layer. An unavailable source narrows the
- * merge; the other layers plus the persisted table still produce usable
- * pricing, so this must never fail the whole sync.
- */
-async function degradeOnFailure(
-  label: string,
-  entries: Promise<ModelEntry[]>,
-): Promise<ModelEntry[]> {
-  try {
-    return await entries;
-  } catch (error) {
-    logWarning(`Skipped ${label} source during model registry sync`, {
-      error: error instanceof Error ? error.message : String(error),
-    });
-    return [];
-  }
 }
 
 function fetchGatewayEntries(): Promise<ModelEntry[]> {
