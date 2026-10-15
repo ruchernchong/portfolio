@@ -106,7 +106,6 @@
     "@types/react-dom": "catalog:",
     "@types/rss": "^0.0.32",
     "@vercel/config": "catalog:",
-    "@vitejs/plugin-react": "^5.1.0",
     "@vitest/browser": "catalog:",
     "@vitest/browser-playwright": "catalog:",
     "@vitest/coverage-v8": "catalog:",

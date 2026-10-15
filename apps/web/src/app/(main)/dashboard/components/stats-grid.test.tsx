@@ -94,8 +94,6 @@ describe("StatCard", () => {
       <StatCard label="Total Visits" value={48200} animate compact />,
     );
 
-    await expect
-      .element(screen.getByText("48.2k"), { timeout: 3000 })
-      .toBeVisible();
+    await expect.element(screen.getByText("48.2k")).toBeVisible();
   });
 });
