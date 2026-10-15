@@ -1,4 +1,8 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("@/config/redis", () => ({
+  default: { set: vi.fn(), eval: vi.fn() },
+}));
 
 vi.mock("@/lib/api/mcp-auth", () => ({
   validateMcpAuth: vi.fn(),
@@ -23,6 +27,7 @@ vi.mock("next/cache", () => ({
 
 import { revalidateTag } from "next/cache";
 import { start } from "workflow/api";
+import redis from "@/config/redis";
 import { validateMcpAuth } from "@/lib/api/mcp-auth";
 import { upsertTokenEffortUsage, upsertTokenUsage } from "@/lib/queries/usage";
 import { POST } from "./route";
@@ -32,6 +37,8 @@ const mockUpsertTokenUsage = vi.mocked(upsertTokenUsage);
 const mockUpsertTokenEffortUsage = vi.mocked(upsertTokenEffortUsage);
 const mockStart = vi.mocked(start);
 const mockRevalidateTag = vi.mocked(revalidateTag);
+const mockSet = vi.mocked(redis.set);
+const mockEval = vi.mocked(redis.eval);
 
 /** A single valid daily aggregate matching the wire contract. */
 const validRow = {
@@ -82,11 +89,112 @@ function postRequest(body: unknown) {
 describe("POST /api/usage/ingest", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    const gates = new Map<string, { token: unknown; expires: number }>();
+    mockSet.mockImplementation(async (key, token, options) => {
+      if (
+        options &&
+        "nx" in options &&
+        options.nx &&
+        (gates.get(key)?.expires ?? 0) > Date.now()
+      ) {
+        return null;
+      }
+      const seconds = options && "ex" in options ? (options.ex ?? 0) : 0;
+      gates.set(key, { token, expires: Date.now() + seconds * 1000 });
+      return "OK";
+    });
+    mockEval.mockImplementation(async (_script, keys, args) => {
+      const key = String(keys[0]);
+      if (gates.get(key)?.token !== args[0]) return 0;
+      gates.delete(key);
+      return 1;
+    });
     mockUpsertTokenUsage.mockResolvedValue(1);
     mockUpsertTokenEffortUsage.mockResolvedValue(1);
     mockStart.mockResolvedValue({ runId: "run_123" } as Awaited<
       ReturnType<typeof start>
     >);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllEnvs();
+  });
+
+  it("should ingest every batch but start only one sync within 24 hours", async () => {
+    mockValidateMcpAuth.mockResolvedValue(adminOAuth);
+    const clock = vi.spyOn(Date, "now").mockReturnValue(0);
+
+    await POST(postRequest({ rows: [validRow] }));
+    clock.mockReturnValue(24 * 60 * 60 * 1000 - 1);
+    const skipped = await POST(postRequest({ rows: [validRow] }));
+
+    expect(await skipped.json()).toMatchObject({ ok: true, syncRunId: null });
+    expect(mockUpsertTokenUsage).toHaveBeenCalledTimes(2);
+    expect(mockStart).toHaveBeenCalledOnce();
+
+    clock.mockReturnValue(24 * 60 * 60 * 1000);
+    const nextDay = await POST(postRequest({ rows: [validRow] }));
+
+    expect(await nextDay.json()).toMatchObject({ syncRunId: "run_123" });
+    expect(mockStart).toHaveBeenCalledTimes(2);
+  });
+
+  it("should start only one sync for concurrent ingests", async () => {
+    mockValidateMcpAuth.mockResolvedValue(adminOAuth);
+
+    const responses = await Promise.all(
+      Array.from({ length: 5 }, () => POST(postRequest({ rows: [validRow] }))),
+    );
+
+    expect(responses.every((response) => response.status === 200)).toBe(true);
+    expect(mockUpsertTokenUsage).toHaveBeenCalledTimes(5);
+    expect(mockStart).toHaveBeenCalledOnce();
+  });
+
+  it("should let the next ingest retry when enqueueing fails", async () => {
+    mockValidateMcpAuth.mockResolvedValue(adminOAuth);
+    mockStart.mockRejectedValueOnce(new Error("queue unavailable"));
+
+    const failed = await POST(postRequest({ rows: [validRow] }));
+    const retried = await POST(postRequest({ rows: [validRow] }));
+
+    expect(await failed.json()).toMatchObject({ ok: true, syncRunId: null });
+    expect(await retried.json()).toMatchObject({ syncRunId: "run_123" });
+    expect(mockStart).toHaveBeenCalledTimes(2);
+  });
+
+  it("should keep ingesting without starting unthrottled syncs when Redis is down", async () => {
+    mockValidateMcpAuth.mockResolvedValue(adminOAuth);
+    mockSet.mockRejectedValueOnce(new Error("Redis unavailable"));
+
+    const response = await POST(postRequest({ rows: [validRow] }));
+
+    expect(await response.json()).toMatchObject({ ok: true, syncRunId: null });
+    expect(mockStart).not.toHaveBeenCalled();
+    expect(mockEval).not.toHaveBeenCalled();
+    expect(mockRevalidateTag).toHaveBeenCalledWith("usage", "max");
+  });
+
+  it("should keep ingesting when releasing a failed scheduling claim fails", async () => {
+    mockValidateMcpAuth.mockResolvedValue(adminOAuth);
+    mockStart.mockRejectedValueOnce(new Error("queue unavailable"));
+    mockEval.mockRejectedValueOnce(new Error("Redis unavailable"));
+
+    const response = await POST(postRequest({ rows: [validRow] }));
+
+    expect(await response.json()).toMatchObject({ ok: true, syncRunId: null });
+    expect(mockEval).toHaveBeenCalledOnce();
+  });
+
+  it("should keep production and preview sync windows separate", async () => {
+    mockValidateMcpAuth.mockResolvedValue(adminOAuth);
+    vi.stubEnv("VERCEL_ENV", "production");
+    await POST(postRequest({ rows: [validRow] }));
+    vi.stubEnv("VERCEL_ENV", "preview");
+    await POST(postRequest({ rows: [validRow] }));
+
+    expect(mockStart).toHaveBeenCalledTimes(2);
   });
 
   it("should return 401 when auth fails", async () => {

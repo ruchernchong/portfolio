@@ -80,9 +80,10 @@ async function getModelsApi(): Promise<ModelsApi> {
 /**
  * Build {@link Pricing} from the persisted `model` registry.
  *
- * The registry is the merged snapshot written by {@link syncModelRegistry} on
- * each ingest, so this is also the last-good fallback when a live source fetch
- * fails. Used by the reprice pass and the prod ingest route.
+ * The registry is the merged snapshot written by {@link syncModelRegistry} at
+ * most once per 24 hours after an ingest. It is also the last-good fallback
+ * when a live source fetch fails. Used by the reprice pass and the prod ingest
+ * route.
  */
 export async function loadPricing(): Promise<Pricing> {
   const rows = await db.select().from(model);
@@ -100,7 +101,7 @@ export async function loadPricing(): Promise<Pricing> {
  * upserts the merged rows, and returns pricing built from them. A source that
  * fails to fetch is skipped, not fatal: the merge omits that layer and the
  * existing table rows survive as the last-good snapshot. Runs at the top of
- * each ingest.
+ * a registry sync, scheduled by ingest at most once per 24 hours.
  */
 export async function syncModelRegistry(): Promise<{
   pricing: Pricing;

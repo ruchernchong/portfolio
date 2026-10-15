@@ -13,9 +13,9 @@ import {
 /**
  * Merged model registry: pricing + display metadata per (provider, model).
  *
- * Populated after each `POST /api/usage/ingest` by `syncModelRegistry`, which
- * fetches LiteLLM (primary rates) and models.dev (display names, release dates,
- * and rate gap-fill), folds in human `isOverride` rows, and upserts the merged
+ * Populated at most once per 24 hours after `POST /api/usage/ingest` by
+ * `syncModelRegistry`, which fetches AI Gateway, models.dev and OpenRouter,
+ * folds in human `isOverride` rows, and upserts the merged
  * result here. `token_usage` pricing is then built from these rows rather than
  * from hardcoded constants, so a newly-released model prices automatically once
  * either live source lists it — and a manual fix is an `isOverride` row (edited
