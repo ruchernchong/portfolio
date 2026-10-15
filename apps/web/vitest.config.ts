@@ -19,7 +19,6 @@ export default defineConfig({
     },
     projects: [
       {
-        extends: true,
         test: {
           name: "node",
           environment: "node",
@@ -27,7 +26,6 @@ export default defineConfig({
         },
       },
       {
-        extends: true,
         // next/link reads process.env at import time, which does not exist in the browser
         define: { "process.env": "{}" },
         // Pre-bundle deps that only browser tests import. Discovering them
@@ -40,7 +38,7 @@ export default defineConfig({
           name: "browser",
           include: ["src/**/*.test.tsx"],
           // Real browsers treat unstyled, zero-size elements as hidden
-          setupFiles: ["./src/app/globals.css", "./vitest-browser-setup.ts"],
+          setupFiles: ["./src/app/globals.css", "./vitest.setup.ts"],
           browser: {
             enabled: true,
             headless: true,
