@@ -1,3 +1,9 @@
+## [1.56.4](https://github.com/ruchernchong/blog/compare/v1.56.3...v1.56.4) (2026-10-15)
+
+### Performance Improvements
+
+* sync model registry only for unnamed models ([72e18e6](https://github.com/ruchernchong/blog/commit/72e18e6b4c93452edf252ddf3fc4412738580d0b))
+
 ## [1.56.3](https://github.com/ruchernchong/blog/compare/v1.56.2...v1.56.3) (2026-10-15)
 
 ### Bug Fixes
