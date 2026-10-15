@@ -13,6 +13,10 @@ vi.mock("@/lib/queries/usage", () => ({
   upsertTokenEffortUsage: vi.fn(),
 }));
 
+vi.mock("@/lib/queries/models", () => ({
+  getModelDisplayNames: vi.fn(),
+}));
+
 vi.mock("workflow/api", () => ({
   start: vi.fn(),
 }));
@@ -29,6 +33,7 @@ import { revalidateTag } from "next/cache";
 import { start } from "workflow/api";
 import redis from "@/config/redis";
 import { validateMcpAuth } from "@/lib/api/mcp-auth";
+import { getModelDisplayNames } from "@/lib/queries/models";
 import { upsertTokenEffortUsage, upsertTokenUsage } from "@/lib/queries/usage";
 import { POST } from "./route";
 
@@ -36,6 +41,7 @@ const mockValidateMcpAuth = vi.mocked(validateMcpAuth);
 const mockUpsertTokenUsage = vi.mocked(upsertTokenUsage);
 const mockUpsertTokenEffortUsage = vi.mocked(upsertTokenEffortUsage);
 const mockStart = vi.mocked(start);
+const mockGetModelDisplayNames = vi.mocked(getModelDisplayNames);
 const mockRevalidateTag = vi.mocked(revalidateTag);
 const mockSet = vi.mocked(redis.set);
 const mockEval = vi.mocked(redis.eval);
@@ -111,6 +117,8 @@ describe("POST /api/usage/ingest", () => {
     });
     mockUpsertTokenUsage.mockResolvedValue(1);
     mockUpsertTokenEffortUsage.mockResolvedValue(1);
+    // No names by default, so every ingest is eligible to start the sync.
+    mockGetModelDisplayNames.mockResolvedValue({});
     mockStart.mockResolvedValue({ runId: "run_123" } as Awaited<
       ReturnType<typeof start>
     >);
@@ -119,6 +127,35 @@ describe("POST /api/usage/ingest", () => {
   afterEach(() => {
     vi.restoreAllMocks();
     vi.unstubAllEnvs();
+  });
+
+  it("should not start the sync when every model has a display name", async () => {
+    mockValidateMcpAuth.mockResolvedValue(adminOAuth);
+    mockGetModelDisplayNames.mockResolvedValue({
+      "claude-opus-4-8": "Claude Opus 4.8",
+    });
+
+    const response = await POST(postRequest({ rows: [validRow] }));
+
+    expect(await response.json()).toMatchObject({ ok: true, syncRunId: null });
+    expect(mockGetModelDisplayNames).toHaveBeenCalledWith(["claude-opus-4-8"]);
+    expect(mockSet).not.toHaveBeenCalled();
+    expect(mockStart).not.toHaveBeenCalled();
+    expect(mockRevalidateTag).toHaveBeenCalledWith("usage", "max");
+  });
+
+  it("should start the sync when any model has no display name", async () => {
+    mockValidateMcpAuth.mockResolvedValue(adminOAuth);
+    mockGetModelDisplayNames.mockResolvedValue({
+      "claude-opus-4-8": "Claude Opus 4.8",
+    });
+
+    const response = await POST(
+      postRequest({ rows: [validRow, { ...validRow, model: "gpt-9" }] }),
+    );
+
+    expect(await response.json()).toMatchObject({ syncRunId: "run_123" });
+    expect(mockStart).toHaveBeenCalledOnce();
   });
 
   it("should ingest every batch but start only one sync within 24 hours", async () => {

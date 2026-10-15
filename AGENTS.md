@@ -47,16 +47,18 @@ Never bypass the minimum package release age or add `minimumReleaseAgeExclude`; 
 
 ### Usage Analytics Ingestion
 
-Model pricing/metadata is a DB-backed registry (the `model` table), synced at
-most once per 24 hours after an ingest from **AI Gateway**, **models.dev**, and
+Model pricing/metadata is a DB-backed registry (the `model` table), synced on
+demand when an ingest carries a model id with no display name in the registry,
+at most once per 24 hours, from **AI Gateway**, **models.dev**, and
 **OpenRouter**, plus curated MCP-editable overrides (`is_override`
 rows, which win the merge). This replaces the former hardcoded pricing constants
 so a newly-released model prices automatically once a live source lists it; an
 override is the no-deploy fix for internal/routed slugs no public source carries.
 See `packages/usage/src/registry.ts` (pure normalise/merge) and
 `apps/web/src/lib/queries/models.ts` (`syncModelRegistry`).
-The ingest route claims an atomic Redis `SET NX EX` gate before enqueueing the
-sync workflow. The 24-hour window is shared across devices, batches and server
+The ingest route skips the sync when every ingested model id already has a
+display name; otherwise it claims an atomic Redis `SET NX EX` gate before
+enqueueing the sync workflow. The 24-hour window is shared across devices, batches and server
 instances, with separate keys for production, preview and development. An enqueue
 failure releases its own claim for the next ingest to retry; a Redis failure skips
 scheduling while usage ingestion continues. A queued workflow keeps its daily
@@ -66,8 +68,8 @@ window even if execution ultimately fails after its step retries.
   CLI, a Rust collector (`apps/cli`), run via `turbo run @workspace/cli#…`. Parses Claude, Codex,
   OpenCode, Cursor, and Grok on this machine. `ingest` POSTs daily rows with
   `costUsd: null` to `POST /api/usage/ingest`, which upserts them with that server's
-  own `DATABASE_URL`, prices them, and schedules a model registry sync when its
-  24-hour window permits. The target is
+  own `DATABASE_URL`, prices them, and schedules a model registry sync when a model id has
+  no display name and its 24-hour window permits. The target is
   `AGENT_USAGE_URL` (set to `https://blog.localhost/api/usage/ingest` in the local
   `.envrc`), defaulting to production. Login (OAuth, admin account) follows
   the same server. Production tokens live in the Keychain; each non-production server

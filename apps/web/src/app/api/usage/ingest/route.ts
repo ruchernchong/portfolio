@@ -8,10 +8,21 @@ import { handleApiError } from "@/lib/api/errors";
 import { validateMcpAuth } from "@/lib/api/mcp-auth";
 import { parseAndValidateBody } from "@/lib/api/validation";
 import { logWarning } from "@/lib/logger";
+import { getModelDisplayNames } from "@/lib/queries/models";
 import { upsertTokenEffortUsage, upsertTokenUsage } from "@/lib/queries/usage";
 import { syncModelRegistryWorkflow } from "@/workflows/sync-model-registry";
 
 const REGISTRY_SYNC_INTERVAL_SECONDS = 86_400;
+
+/**
+ * True when any ingested model id has no display name in the registry, which
+ * is the only reason to refresh it. A lookup failure resolves to no names, so
+ * it errs towards syncing; the daily claim below still bounds that.
+ */
+async function hasUnmappedModels(modelIds: string[]): Promise<boolean> {
+  const names = await getModelDisplayNames(modelIds);
+  return modelIds.some((id) => !names[id]);
+}
 
 /** Claim before enqueueing so batches, devices and server instances share one window. */
 async function scheduleRegistrySync(): Promise<string | null> {
@@ -76,7 +87,8 @@ return 0`,
  *
  * The upsert is the only synchronous work. Refreshing the model registry and
  * repricing previously-unpriceable rows are handed to
- * {@link syncModelRegistryWorkflow}, which runs off the request path at most
+ * {@link syncModelRegistryWorkflow}, which runs off the request path only when
+ * an ingested model id has no display name in the registry, and then at most
  * once per 24 hours, with per-source retries and a visible success/failure
  * record. This route used to do all of it inline behind a `logWarning`, which
  * is how a missing table went unnoticed for a week.
@@ -110,7 +122,11 @@ export async function POST(request: Request) {
     // Fire-and-forget: `start` returns as soon as the run is enqueued. The
     // upsert above is the durable operation, so a scheduling failure must not
     // turn a successful write into a caller-visible 500.
-    const syncRunId = await scheduleRegistrySync();
+    const syncRunId = (await hasUnmappedModels(
+      result.data.rows.map((row) => row.model),
+    ))
+      ? await scheduleRegistrySync()
+      : null;
 
     // Publish the rows just written. The workflow revalidates again once the
     // registry lands, which is what refreshes display names.
