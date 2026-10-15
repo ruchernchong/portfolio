@@ -1,5 +1,5 @@
 import { Card, Skeleton } from "@heroui/react";
-import { connection } from "next/server";
+import { cacheLife } from "next/cache";
 import { Suspense } from "react";
 import { getVisits } from "@/lib/queries/posthog";
 import { VisitsChartClient } from "./visits-chart.client";
@@ -28,7 +28,9 @@ export function VisitsChartFallback() {
 }
 
 async function VisitsChartContent() {
-  await connection();
+  "use cache";
+  cacheLife("days");
+
   const visits = await getVisits();
   return <VisitsChartClient data={visits} />;
 }

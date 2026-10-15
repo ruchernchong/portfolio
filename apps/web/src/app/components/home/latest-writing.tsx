@@ -1,9 +1,13 @@
 import { format, formatISO } from "date-fns";
 import type { Route } from "next";
+import { cacheLife } from "next/cache";
 import Link from "next/link";
 import { getPublishedPosts } from "@/lib/queries/posts";
 
 export async function LatestWriting() {
+  "use cache";
+  cacheLife("max");
+
   const allPosts = await getPublishedPosts();
   const latestPosts = allPosts.slice(0, 3);
 

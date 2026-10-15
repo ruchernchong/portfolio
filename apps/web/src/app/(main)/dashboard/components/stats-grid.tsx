@@ -1,5 +1,5 @@
 import { Skeleton } from "@heroui/react";
-import { connection } from "next/server";
+import { cacheLife } from "next/cache";
 import { Suspense } from "react";
 import { StatCard } from "@/app/(main)/dashboard/components/stat-card";
 import {
@@ -45,7 +45,9 @@ export function StatsGridFallback() {
 }
 
 async function StatsGridContent() {
-  await connection();
+  "use cache";
+  cacheLife("hours");
+
   const [totalVisits, followers, stars, contributions] = await Promise.all([
     getTotalVisits(),
     getGitHubFollowers(),

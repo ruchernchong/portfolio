@@ -1,3 +1,4 @@
+import { cacheLife } from "next/cache";
 import { Suspense } from "react";
 import { StatFigure } from "@/app/components/stat-figure";
 import projects from "@/data/projects";
@@ -39,6 +40,9 @@ function ProjectStatsFallback() {
 }
 
 async function ProjectStatsContent() {
+  "use cache";
+  cacheLife("hours");
+
   const stars = await getGitHubStars().catch(() => 0);
 
   return (

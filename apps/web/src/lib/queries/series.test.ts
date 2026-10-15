@@ -12,7 +12,8 @@ vi.mock("next/cache", () => ({
 }));
 
 vi.mock("@/schema", async () => {
-  const actual = await vi.importActual<typeof import("@/schema")>("@/schema");
+  const actual =
+    await vi.importActual<typeof import("@/schema/schema")>("@/schema/schema");
   const query = {
     from: () => query,
     where: () => query,
@@ -28,6 +29,7 @@ vi.mock("@/schema", async () => {
   return { ...actual, db };
 });
 
+import { cacheTag } from "next/cache";
 import {
   getAllSeries,
   getPostsInSeries,
@@ -42,6 +44,7 @@ import {
 
 describe("series queries", () => {
   beforeEach(() => {
+    vi.clearAllMocks();
     results.length = 0;
     findFirst.mockReset();
   });
@@ -91,5 +94,8 @@ describe("series queries", () => {
     await expect(getPublishedSeriesWithPosts()).resolves.toEqual([
       { id: "s1", postCount: 1, posts: [{ slug: "post-a", title: "Post A" }] },
     ]);
+
+    expect(cacheTag).toHaveBeenCalledWith("series:list");
+    expect(cacheTag).toHaveBeenCalledWith("posts:list");
   });
 });

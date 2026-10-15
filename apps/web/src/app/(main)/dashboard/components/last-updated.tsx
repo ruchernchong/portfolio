@@ -1,7 +1,11 @@
+import { cacheLife } from "next/cache";
 import { APP_LOCALE, APP_TIME_ZONE } from "@/constants/date-time";
 import { getLastUpdated } from "@/lib/queries/posthog";
 
 export async function LastUpdated() {
+  "use cache";
+  cacheLife("days");
+
   const raw = await getLastUpdated();
   if (!raw) return null;
 

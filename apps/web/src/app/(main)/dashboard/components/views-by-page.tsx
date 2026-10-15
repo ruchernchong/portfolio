@@ -1,5 +1,5 @@
 import { Card, Skeleton } from "@heroui/react";
-import { connection } from "next/server";
+import { cacheLife } from "next/cache";
 import { Suspense } from "react";
 import { getPages } from "@/lib/queries/posthog";
 
@@ -43,7 +43,9 @@ export function ViewsByPageFallback() {
 }
 
 async function ViewsByPageContent() {
-  await connection();
+  "use cache";
+  cacheLife("days");
+
   const data = await getPages();
 
   if (!data || data.length === 0) {

@@ -12,8 +12,8 @@ import {
 } from "@/lib/github";
 import { getTotalVisits } from "@/lib/queries/posthog";
 
-vi.mock("next/server", () => ({
-  connection: vi.fn(),
+vi.mock("next/cache", () => ({
+  cacheLife: vi.fn(),
 }));
 
 vi.mock("@/lib/github", () => ({

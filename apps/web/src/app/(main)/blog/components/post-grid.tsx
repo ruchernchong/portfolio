@@ -1,4 +1,5 @@
 import { formatISO } from "date-fns";
+import { cacheLife } from "next/cache";
 import { Suspense } from "react";
 import { getPublishedPosts } from "@/lib/queries/posts";
 import {
@@ -8,6 +9,9 @@ import {
 } from "./post-grid-list.client";
 
 export async function PostGrid() {
+  "use cache";
+  cacheLife("max");
+
   const allPosts = await getPublishedPosts();
 
   // The full list comes from cached data, so this section prerenders into the

@@ -11,7 +11,7 @@ import globalMetadata from "@/app/metadata";
 
 const title = "Dashboard";
 const description =
-  "Site visitor analytics and GitHub metrics, updated on every page load.";
+  "Site visitor analytics refreshed daily, with hourly GitHub metrics.";
 const canonical = "/dashboard";
 
 export const metadata: Metadata = {
@@ -33,13 +33,15 @@ export const metadata: Metadata = {
   },
 };
 
+export const ensureStatic = "navigation";
+
 export default function DashboardPage() {
   return (
     <SurfaceCard width="wide" className="flex flex-col gap-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <PageHeader
           title="Dashboard"
-          description="Live analytics for ruchern.dev, powered by PostHog."
+          description="Site analytics for ruchern.dev, powered by PostHog."
         />
         <LastUpdated />
       </div>

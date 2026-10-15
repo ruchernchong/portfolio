@@ -1,9 +1,13 @@
 import { format, formatISO } from "date-fns";
 import type { Route } from "next";
+import { cacheLife } from "next/cache";
 import Link from "next/link";
 import { getFeaturedPosts } from "@/lib/queries/posts";
 
 export async function FeaturedPost() {
+  "use cache";
+  cacheLife("max");
+
   const featuredPosts = await getFeaturedPosts();
   const post = featuredPosts[0];
 

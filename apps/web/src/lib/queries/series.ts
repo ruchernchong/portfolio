@@ -56,6 +56,7 @@ export const getPublishedSeriesWithPostCount = async () => {
   "use cache";
   cacheLife("max");
   cacheTag("series:list");
+  cacheTag("posts:list");
 
   const result = await db
     .select({
