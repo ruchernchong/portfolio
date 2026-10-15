@@ -1,3 +1,9 @@
+## [1.56.3](https://github.com/ruchernchong/blog/compare/v1.56.2...v1.56.3) (2026-10-15)
+
+### Bug Fixes
+
+* limit model registry sync to once daily ([a3ab089](https://github.com/ruchernchong/blog/commit/a3ab0892c0a9ed11b776ccb5337a374baaebd66f))
+
 ## [1.56.2](https://github.com/ruchernchong/blog/compare/v1.56.1...v1.56.2) (2026-10-15)
 
 ### Performance Improvements
