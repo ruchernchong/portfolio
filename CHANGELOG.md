@@ -1,3 +1,9 @@
+## [1.56.2](https://github.com/ruchernchong/blog/compare/v1.56.1...v1.56.2) (2026-10-15)
+
+### Performance Improvements
+
+* cache public pages with Next.js 16.4 ([37f496a](https://github.com/ruchernchong/blog/commit/37f496ac63f7edf0a89075ffafe0a7120c9b4ae9))
+
 ## [1.56.1](https://github.com/ruchernchong/blog/compare/v1.56.0...v1.56.1) (2026-10-07)
 
 ### Bug Fixes
