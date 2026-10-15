@@ -42,7 +42,7 @@ export default defineConfig({
           name: "browser",
           include: ["src/**/*.test.tsx"],
           // Real browsers treat unstyled, zero-size elements as hidden
-          setupFiles: ["./src/app/globals.css"],
+          setupFiles: ["./src/app/globals.css", "./vitest-browser-setup.ts"],
           browser: {
             enabled: true,
             headless: true,
